@@ -114,13 +114,13 @@ Due to the nature of this plugin, it is NOT available from the WordPress Plugin 
 
 #### Upload via WordPress Dashboard
 
-Installation of this plugin can be managed from the WordPress Dashboard » *Plugins* » *Add New* page. Click the [Upload Plugin] button, then select the eacmetapixel.zip file from your computer.
+Installation of this plugin can be managed from the WordPress Dashboard » *Plugins* » *Add New* page. Click the [Upload Plugin] button, then select the eacCloudflare.zip file from your computer.
 
 See [Managing Plugins -> Upload via WordPress Admin](https://wordpress.org/support/article/managing-plugins/#upload-via-wordpress-admin)
 
 #### Manual Plugin Installation
 
-You can install the plugin manually by extracting the eacmetapixel.zip file and uploading the 'eacmetapixel' folder to the 'wp-content/plugins' folder on your WordPress server.
+You can install the plugin manually by extracting the eacCloudflare.zip file and uploading the 'eacCloudflare' folder to the 'wp-content/plugins' folder on your WordPress server.
 
 See [Managing Plugins -> Manual Plugin Installation](https://wordpress.org/support/article/managing-plugins/#manual-plugin-installation-1)
 
