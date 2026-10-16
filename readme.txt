@@ -1,5 +1,5 @@
 === {eac}Doojigger Cloudflare Doololly for WordPress ===
-Plugin URI:         https://eacdoojigger.earthasylum.com/cloudflare/
+Plugin URI:         https://eacdoojigger.earthasylum.com/eaccloudflare/
 Author:             [EarthAsylum Consulting](https://www.earthasylum.com)
 Stable tag:         2.0.0
 Last Updated:       15-Oct-2026
@@ -123,7 +123,7 @@ Once installed and activated options for this extension will show in the 'Cloudf
 == Screenshots ==
 
 1. {eac}Cloudflare Doololly
-![{eac}Cloudflare Doololly](https://swregistry.earthasylum.com/software-updates/eaccloudflare/assets/screenshot-1.png)
+![{eac}Cloudflare Doololly](https://raw.githubusercontent.com/EarthAsylum/eacCloudflare/main/.wp-assets/screenshot-1.png)
 
 
 == Copyright ==
