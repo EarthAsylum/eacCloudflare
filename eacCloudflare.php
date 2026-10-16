@@ -18,7 +18,7 @@ namespace EarthAsylumConsulting;
  * Requires at least:	5.8
  * Tested up to:		7.1
  * Requires PHP:		8.1
- * Plugin URI:          https://eacdoojigger.earthasylum.com/eacCloudflare/
+ * Plugin URI:          https://eacdoojigger.earthasylum.com/eaccloudflare/
  * Update URI: 			https://eacdoojigger.earthasylum.com/software-updates/eaccloudflare.json
  * Author:				EarthAsylum Consulting
  * Author URI:			http://www.earthasylum.com
