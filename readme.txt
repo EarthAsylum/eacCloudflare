@@ -2,7 +2,7 @@
 Plugin URI:         https://eacdoojigger.earthasylum.com/eaccloudflare/
 Author:             [EarthAsylum Consulting](https://www.earthasylum.com)
 Stable tag:         2.0.0
-Last Updated:       15-Oct-2026
+Last Updated:       16-Oct-2026
 Requires at least:  5.8
 Tested up to:       7.1
 Requires PHP:       8.1
@@ -22,14 +22,15 @@ Provides limited control of Cloudflare settings, caching, blacklisting, and rate
 __Cloudflare control from WordPress__
 
 1. 	Pause/Resume Cloudflare service.
-2. 	Override the browser cache time-to-live.
-3. 	Set 'cf-edge-cache' header to trigger APO or custom rules.
+2. 	Override the caching mode and browser cache time-to-live.
+3. 	Set the security level, including "under attack".
+4. 	Set 'cf-edge-cache' header to trigger APO or custom rules.
 	+	Custom rules can look for this header set to `cache, platform=wordpress` or `no-cache` or not set.
-4. 	Add 'Cache-Tag' header with mime type that can be used for selective cache purge.
-5. 	Set common Cloudflare options for speed & security directly from WordPress.
-6. 	Automatically purge cloudflare cache (by host name).
-7. 	Add a rate limiting rule to temporarily block IP addresses after 100 requests within 10 seconds.
-8. 	Create and update Cloudflare IP blacklist (account) and blocking rule (zone) using risk assessment results.
+5. 	Add 'Cache-Tag' header with mime type that can be used for selective cache purge.
+6. 	Set common Cloudflare options for speed & security directly from WordPress.
+7. 	Automatically purge cloudflare cache (by host name).
+8. 	Add a rate limiting rule to temporarily block IP addresses after 100 requests within 10 seconds.
+9. 	Create and update Cloudflare IP blacklist (account) and blocking rule (zone) using risk assessment results.
 
 > 	Recommended for free plans. Paid plans should use the official Cloudflare plugin with Automatic Platform Optimization (APO).
 
@@ -54,14 +55,32 @@ __Pause This Zone__
 
 Pausing stops traffic from passing through the Cloudflare network, making your origin server IP address visible. Also, Cloudflare’s security and protection features become disabled.
 
+__Security Level__
+
+Off: Applies a very low threshold, challenging only the most extreme threats.
+Low: Challenges visitors who have a high threat score.
+Medium: Challenges visitors with a moderate or high threat score.
+High: Challenges any visitor with even a low threat score, plus additional suspicious profiles..
+Cloudflare's Under Attack mode performs additional security checks to help mitigate layer 7 DDoS attacks. Validated users access your website and suspicious traffic is blocked. It is designed to be used as one of the last resorts when a zone is under attack.
+
 __Browser Cache Time-To-Live__
 
 Controls how long resources cached by client browsers remain valid.
 Zone → Caching → Configuration
 
+__Caching Level__
+
+Caching levels determine how much of your website’s static content Cloudflare should cache.
+Bypass: Cloudflare does not cache.
+Basic: Delivers resources from cache when there is no query string
+Simplified: Delivers the same resource to everyone independent of the query string.
+Aggressive: Caches all static content that has a query string.
+Everything: Treats all content as static and caches all file types beyond the Cloudflare default cached content.
+Zone → Caching → Configuration
+
 __Cloudflare Options__
 
-Enable/disable common Cloudflare options for speed & security.
+Enable/disable several common Cloudflare options for speed & security.
 Zone → Speed → Settings
 Zone → SSL/TLS → Edge Certificates
 Zone → Security → Settings
@@ -85,14 +104,14 @@ Controls how long an IP address is blacklisted due to Risk Assessment. The Cloud
 
 __Filters__
 
-1. 'cloudflare_purge_everything_actions' (array) - filter actions that trigger a cache purge.
-2. 'cloudflare_use_cache' (bool) - override `cf-edge-cache` setting (cache/no-cache).
++	'cloudflare_purge_everything_actions' (array) - filter actions that trigger a cache purge.
++	'cloudflare_use_cache' (bool) - override `cf-edge-cache` setting (cache/no-cache).
 
 __Actions__
 
-1. 'eacDoojigger_cloudflare_pause'   - pause the cloudflare service
-2. 'eacDoojigger_cloudflare_resume'  - resume the cloudflare service
-3. 'eacDoojigger_cloudflare_purge'   - purge the cloudflare cache
++	'eacDoojigger_cloudflare_pause'   - pause the cloudflare service
++	'eacDoojigger_cloudflare_resume'  - resume the cloudflare service
++	'eacDoojigger_cloudflare_purge'   - purge the cloudflare cache
 
 
 == Installation ==
@@ -139,10 +158,12 @@ You should receive a copy of the GNU General Public License along with this prog
 
 == Changelog ==
 
-= Version 2.0.0 – October 15, 2026 =
+= Version 2.0.0 – October 16, 2026 =
 
 +	First release as a Doohickey (plugin).
-+	New Blacklisting for Risk assessment.
++	New Security Level with 'Under Attack'.
++	New Caching Level drop-down.
++	New Blacklisting for Risk Assessment.
 +	New default rate-limiting rule.
 +	Updated cache handling.
 +	Updates settings retrieval (as a group vs individually).
