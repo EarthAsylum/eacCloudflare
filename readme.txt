@@ -2,7 +2,7 @@
 Plugin URI:         https://eacdoojigger.earthasylum.com/eaccloudflare/
 Author:             [EarthAsylum Consulting](https://www.earthasylum.com)
 Stable tag:         2.0.0
-Last Updated:       16-Oct-2026
+Last Updated:       17-Oct-2026
 Requires at least:  5.8
 Tested up to:       7.1
 Requires PHP:       8.1
@@ -32,8 +32,6 @@ __Cloudflare control from WordPress__
 8. 	Add a rate limiting rule to temporarily block IP addresses after 100 requests within 10 seconds.
 9. 	Create and update Cloudflare IP blacklist (account) and blocking rule (zone) using risk assessment results.
 
-> 	Recommended for free plans. Paid plans should use the official Cloudflare plugin with Automatic Platform Optimization (APO).
-
 = Cloudflare Settings =
 
 With your Cloudflare account information, we can set certain common Cloudflare options as well as automatically purge the Cloudflare cache when purging the local WordPress caches, add a rate-limiting rule to mitigate brute-force and DDoS attacks, and blacklist IP addresses identified by Risk Assessment.
@@ -57,44 +55,47 @@ Pausing stops traffic from passing through the Cloudflare network, making your o
 
 __Security Level__
 
-Off: Applies a very low threshold, challenging only the most extreme threats.
-Low: Challenges visitors who have a high threat score.
-Medium: Challenges visitors with a moderate or high threat score.
-High: Challenges any visitor with even a low threat score, plus additional suspicious profiles..
-Cloudflare's Under Attack mode performs additional security checks to help mitigate layer 7 DDoS attacks. Validated users access your website and suspicious traffic is blocked. It is designed to be used as one of the last resorts when a zone is under attack.
+Cloudflare's security automatically protects your domain from malicious traffic.
+
+`Off`: Applies a very low threshold, challenging only the most extreme threats.
+`Low`: Challenges visitors who have a high threat score.
+`Medium`: Challenges visitors with a moderate or high threat score.
+`High`: Challenges any visitor with even a low threat score, plus additional suspicious profiles..
+`Under Attack`: Performs additional security checks to help mitigate layer 7 DDoS attacks. Validated users access your website and suspicious traffic is blocked. It is designed to be used as one of the last resorts when a zone is under attack.
 
 __Browser Cache Time-To-Live__
 
 Controls how long resources cached by client browsers remain valid.
-Zone → Caching → Configuration
+	Zone → Caching → Configuration
 
 __Caching Level__
 
 Caching levels determine how much of your website’s static content Cloudflare should cache.
 Bypass: Cloudflare does not cache.
-Basic: Delivers resources from cache when there is no query string
-Simplified: Delivers the same resource to everyone independent of the query string.
-Aggressive: Caches all static content that has a query string.
-Everything: Treats all content as static and caches all file types beyond the Cloudflare default cached content.
-Zone → Caching → Configuration
+	Zone → Caching → Configuration
+
+`Basic`: Delivers resources from cache when there is no query string
+`Simplified`: Delivers the same resource to everyone independent of the query string.
+`Aggressive`: Caches all static content that has a query string.
+`Everything`: Treats all content as static and caches all file types beyond the Cloudflare default cached content.
 
 __Cloudflare Options__
 
 Enable/disable several common Cloudflare options for speed & security.
-Zone → Speed → Settings
-Zone → SSL/TLS → Edge Certificates
-Zone → Security → Settings
+	Zone → Speed → Settings
+	Zone → SSL/TLS → Edge Certificates
+	Zone → Security → Settings
 
 __Rate Limit Rule__
 
 Adds a rate limiting rule to temporarily block IP addresses after 100 requests within 10 seconds.
 Set to work with free plans but may overwrite existing rule.
-Zone → Security → Security rules
+	Zone → Security → Security rules
 
 __Risk Assessment Blacklist__
 
-When a request is blocked by the {eac}Doojigger Risk Assessment process, add the remote IP address to the Cloudflare blacklist to prevent further access to the site. This creates or updates a Cloudflare IP list (Account → Configurations → Lists) and adds a security rule (Zone → Security → Security Rules) to block the list.
-Note: To use an existing IP list, add `[{eac}Cloudflare]` to its description.
+When a request is blocked by the {eac}Doojigger Risk Assessment process, add the remote IP address to the Cloudflare blacklist to prevent further access to the site. This creates or updates a Cloudflare IP list (`Account → Configurations → Lists`) and adds a security rule (`Zone → Security → Security Rules`) to block the list.
+Note: To use an existing Cloudflare IP list, add `{eac}Cloudflare` to its description.
 
 __Blacklist Expiration__
 
@@ -158,7 +159,7 @@ You should receive a copy of the GNU General Public License along with this prog
 
 == Changelog ==
 
-= Version 2.0.0 – October 16, 2026 =
+= Version 2.0.0 – October 17, 2026 =
 
 +	First release as a Doohickey (plugin).
 +	New Security Level with 'Under Attack'.

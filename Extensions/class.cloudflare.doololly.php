@@ -22,7 +22,7 @@ class cloudflare_extension extends \EarthAsylumConsulting\abstract_extension
 	/**
 	 * @var string extension version
 	 */
-	const VERSION			= '26.1016.1';
+	const VERSION			= '26.1017.1';
 
 	/**
 	 * @var string to set default tab name
@@ -307,11 +307,12 @@ class cloudflare_extension extends \EarthAsylumConsulting\abstract_extension
 						],
 						'after'		=> 	($this->is_option('cloudflare_security','under_attack'))
 											? "<span style='color:var(--eac-wp-medium-red)' class='dashicons dashicons-warning'></span>" : "",
-						'info'		=> 	"Off: Applies a very low threshold, challenging only the most extreme threats.<br>".
+						'info'		=> 	"Cloudflare's security automatically protects your domain from malicious traffic.".
+										"Off: Applies a very low threshold, challenging only the most extreme threats.<br>".
 										"Low: Challenges visitors who have a high threat score.<br>".
 										"Medium: Challenges visitors with a moderate or high threat score.<br>".
 										"High: Challenges any visitor with even a low threat score, plus additional suspicious profiles..<br>".
-										"Cloudflare's Under Attack mode performs additional security checks to help mitigate layer 7 DDoS attacks.",
+										"Under Attack: Performs additional security checks to help mitigate layer 7 DDoS attacks.",
 						'help'		=>	"[info] Validated users access your website and suspicious traffic is blocked. ".
 										"It is designed to be used as one of the last resorts when a zone is under attack.",
 						'style'		=> 	'min-width:22ch;',
@@ -408,7 +409,7 @@ class cloudflare_extension extends \EarthAsylumConsulting\abstract_extension
 										"and adds a security rule ".
 										"<small>(Zone &rarr; Security &rarr; Security Rules)</small> ".
 										"to block the list.<br>".
-										"<small>Note: To use an existing IP list, add <code>[{eac}Cloudflare]</code> to its description.</small>",
+										"<small>Note: To use an existing Cloudflare IP list, add <code>{eac}Cloudflare</code> to its description.</small>",
 						'validate'	=>	[$this,'set_cloudflare_blacklist'],
 				),
 				'cloudflare_blacklist_purge'=> array(
