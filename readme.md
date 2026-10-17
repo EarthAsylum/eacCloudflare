@@ -74,32 +74,26 @@ Cloudflare's security automatically protects your domain from malicious traffic.
 
 __Browser Cache Time-To-Live__
 
-Controls how long resources cached by client browsers remain valid.
-	Zone → Caching → Configuration
+Controls how long resources cached by client browsers remain valid. (`Zone → Caching → Configuration`)
 
 __Caching Level__
 
 Caching levels determine how much of your website’s static content Cloudflare should cache.
-Bypass: Cloudflare does not cache.  
-	Zone → Caching → Configuration
+Bypass: Cloudflare does not cache. (`Zone → Caching → Configuration`)  
 
-`Basic`: Delivers resources from cache when there is no query string
-`Simplified`: Delivers the same resource to everyone independent of the query string.
-`Aggressive`: Caches all static content that has a query string.
-`Everything`: Treats all content as static and caches all file types beyond the Cloudflare default cached content.
++	`Basic`: Delivers resources from cache when there is no query string
++	`Simplified`: Delivers the same resource to everyone independent of the query string.
++	`Aggressive`: Caches all static content that has a query string.
++	`Everything`: Treats all content as static and caches all file types beyond the Cloudflare default cached content.
 
 __Cloudflare Options__
 
-Enable/disable several common Cloudflare options for speed & security.
-	Zone → Speed → Settings
-	Zone → SSL/TLS → Edge Certificates
-	Zone → Security → Settings
+Enable/disable several common Cloudflare options for speed & security. (`Zone → Speed → Settings`), (`Zone → SSL/TLS → Edge Certificates`), (`Zone → Security → Settings`)
 
 __Rate Limit Rule__
 
 Adds a rate limiting rule to temporarily block IP addresses after 100 requests within 10 seconds.
-Set to work with free plans but may overwrite existing rule.
-	Zone → Security → Security rules
+Set to work with free plans but may overwrite existing rule. (`Zone → Security → Security rules`)
 
 __Risk Assessment Blacklist__
 
