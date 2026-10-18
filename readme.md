@@ -28,18 +28,16 @@ GitHub URI:         https://github.com/EarthAsylum/eacCloudflare
 
 ### Description
 
-__Cloudflare control from WordPress__
+__Cloudflare Administration from WordPress__
 
 1. 	Pause/Resume Cloudflare service.
 2. 	Override the caching mode and browser cache time-to-live.
-3. 	Set the security level, including "under attack".
-4. 	Set 'cf-edge-cache' header to trigger APO or custom rules.
-	+	Custom rules can look for this header set to `cache, platform=wordpress` or `no-cache` or not set.
-5. 	Add 'Cache-Tag' header with mime type that can be used for selective cache purge.
-6. 	Set common Cloudflare options for speed & security directly from WordPress.
-7. 	Automatically purge cloudflare cache (by host name).
-8. 	Add a rate limiting rule to temporarily block IP addresses after 100 requests within 10 seconds.
-9. 	Create and update Cloudflare IP blacklist (account) and blocking rule (zone) using risk assessment results.
+3. 	Set the security level, including "Under Attack" mode.
+4. 	Set 'cf-edge-cache' header to trigger Cloudflare's WP-APO (Automatic Platform Optimization) or custom rules.
+5. 	Set common Cloudflare options for speed & security directly from WordPress.
+6. 	Automatically purge cloudflare cache (by host name).
+7. 	Add a rate limiting rule to temporarily block IP addresses after 100 requests within 10 seconds.
+8. 	Create and update Cloudflare IP blacklist (account) and blocking rule (zone) using risk assessment results.
 
 #### Cloudflare Settings
 
@@ -66,11 +64,11 @@ __Security Level__
 
 Cloudflare's security automatically protects your domain from malicious traffic.
 
-`Off`: Applies a very low threshold, challenging only the most extreme threats.
-`Low`: Challenges visitors who have a high threat score.
-`Medium`: Challenges visitors with a moderate or high threat score.
-`High`: Challenges any visitor with even a low threat score, plus additional suspicious profiles..
-`Under Attack`: Performs additional security checks to help mitigate layer 7 DDoS attacks. Validated users access your website and suspicious traffic is blocked. It is designed to be used as one of the last resorts when a zone is under attack.
++	`Off`: Applies a very low threshold, challenging only the most extreme threats.
++	`Low`: Challenges visitors who have a high threat score.
++	`Medium`: Challenges visitors with a moderate or high threat score.
++	`High`: Challenges any visitor with even a low threat score, plus additional suspicious profiles..
++	`Under Attack`: Performs additional security checks to help mitigate layer 7 DDoS attacks. Validated users access your website and suspicious traffic is blocked. It is designed to be used as one of the last resorts when a zone is under attack.
 
 __Browser Cache Time-To-Live__
 
@@ -85,6 +83,14 @@ Bypass: Cloudflare does not cache. (`Zone → Caching → Configuration`)
 +	`Simplified`: Delivers the same resource to everyone independent of the query string.
 +	`Aggressive`: Caches all static content that has a query string.
 +	`Everything`: Treats all content as static and caches all file types beyond the Cloudflare default cached content.
+
+__Edge Caching__
+
+Set cf-edge-cache & x-html-edge-cache http headers to support custom rules or Automatic Platform Optimization. Additionally, adds cache-control with appropriate values for optimal caching, and edge-cache-tag indicating the requested document type (based on WordPress conditionals or mime type). Custom rules can look for these headers (if set)...
+
+	cf-edge-cache: cache,platform=wordpress
+	x-html-edge-cache: "cache,bypass-cookies=wp-|wordpress|woocommerce"
+	edge-cache-tag: index,text/html
 
 __Cloudflare Options__
 
