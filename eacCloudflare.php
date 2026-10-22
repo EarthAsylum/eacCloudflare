@@ -13,7 +13,7 @@ namespace EarthAsylumConsulting;
  *
  * @wordpress-plugin
  * Plugin Name:			{eac}Cloudflare
- * Description:			{eac}Cloudflare Provides limited control of Cloudflare settings, caching, blacklisting, and rate-limiting from WordPress.
+ * Description:			{eac}Cloudflare Provides control of several Cloudflare security and speed settings, intelligent caching management, short-term rate-limiting, and IP black-listing based on risk assessment from WordPress.
  * Version:				2.0.0
  * Requires at least:	5.8
  * Tested up to:		7.1

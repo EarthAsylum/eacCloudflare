@@ -4,8 +4,7 @@ namespace EarthAsylumConsulting\Extensions;
 /**
  * Extension: cloudflare_extension - enable Cloudflare API
  *
- * Recommended for free plans. Paid plans should use the official Cloudflare plugin with
- * Automatic Platform Optimization (APO).
+ * Recommended for and supports free plans.
  *
  * @see https://wordpress.org/plugins/cloudflare/
  * @see https://developers.cloudflare.com/automatic-platform-optimization/
@@ -22,7 +21,7 @@ class cloudflare_extension extends \EarthAsylumConsulting\abstract_extension
 	/**
 	 * @var string extension version
 	 */
-	const VERSION			= '26.1017.1';
+	const VERSION			= '26.1022.1';
 
 	/**
 	 * @var string to set default tab name
@@ -44,7 +43,7 @@ class cloudflare_extension extends \EarthAsylumConsulting\abstract_extension
 	];
 
 	/**
-	 * @var array Cloudflare toggle (on/off) settings
+	 * @var array Cloudflare toggle (on/off) options
 	 * @see https://developers.cloudflare.com/api/
 	 * @see https://developers.cloudflare.com/api/resources/zones/subresources/settings/
 	 */
@@ -118,10 +117,10 @@ class cloudflare_extension extends \EarthAsylumConsulting\abstract_extension
 	];
 
 	/**
-	 * @var array Cloudflare unique/independent settings
+	 * @var array Cloudflare distinct/independent settings
 	 * option_name => setting_name
 	 */
-	const CLOUDFLARE_UNIQUE = [
+	const CLOUDFLARE_SETTINGS = [
 		'cloudflare_cachettl'		=> 'browser_cache_ttl',
 		'cloudflare_cache_level'	=> 'cache_level',
 		'cloudflare_security'		=> 'security_level',
@@ -134,25 +133,32 @@ class cloudflare_extension extends \EarthAsylumConsulting\abstract_extension
 	const TRANSIENT_ZONE_LIST		= 'cloudflare_zone_list';
 	const TRANSIENT_ZONE_STATUS 	= 'cloudflare_zone_status';
 	const TRANSIENT_ZONE_SETTINGS 	= 'cloudflare_zone_settings';
-	const TRANSIENT_BLACKLIST_LIST 	= 'cloudflare_blacklist_list';
+	const TRANSIENT_BLACKLIST 		= 'cloudflare_blacklist_list';
+
+	/**
+	 * @var int transient time-to-live
+	 */
+	const TRANSIENT_ACCOUNT_TTL		= DAY_IN_SECONDS;
+	const TRANSIENT_ZONE_TTL		= HOUR_IN_SECONDS;
+	const TRANSIENT_BLACKLIST_TTL 	= HOUR_IN_SECONDS;
 
 	/**
 	 * @var string blacklist name & description
 	 */
-	const BLACK_LIST_NAME		= 'risk_assessment_blacklist';
-	const BLACK_LIST_DESC		= '{eac}Cloudflare - Block IP addresses identified by Risk Assessment';
-	private $black_list_name	= self::BLACK_LIST_NAME;
+	const BLACK_LIST_NAME			= 'risk_assessment_blacklist';
+	const BLACK_LIST_DESC			= '{eac}Cloudflare - Block IP addresses identified by Risk Assessment';
+	private $black_list_name		= self::BLACK_LIST_NAME;
 
 	/**
 	 * @var string ratelimit rule description
 	 */
-	const RATE_LIMIT_DESC 		= '{eac}Cloudflare - Default Rate Limiting Rule';
+	const RATE_LIMIT_DESC 			= '{eac}Cloudflare - Default Rate Limiting Rule';
 
 	/**
 	 * @var string Cloudflare api url
 	 * sprintf(self::CLOUDFLARE_URL,'accounts'||'zones',accountId||zoneId);
 	 */
-	const CLOUDFLARE_URL 		= "https://api.cloudflare.com/client/v4/%s/%s";
+	const CLOUDFLARE_URL 			= "https://api.cloudflare.com/client/v4/%s/%s";
 
 	/**
 	 * @var string cloudflare api url (account)
@@ -163,6 +169,12 @@ class cloudflare_extension extends \EarthAsylumConsulting\abstract_extension
 	 * @var string cloudflare api url (zone)
 	 */
 	private $cf_zone_url;
+
+	/**
+	 * @var string tag prefix for multi-site within zone
+	 * multi-site = 'siteN', else l|d|s|p - wp environment
+	 */
+	private $cf_tag_prefix 			= '';
 
 	/**
 	 * @var array cloudflare account
@@ -179,14 +191,19 @@ class cloudflare_extension extends \EarthAsylumConsulting\abstract_extension
 	private $cloudflare_zone;
 
 	/**
+	 * @var string cloudflare account email
+	 */
+	private $cloudflare_email;
+
+	/**
 	 * @var string cloudflare api key
 	 */
 	private $cloudflare_key;
 
 	/**
-	 * @var string cloudflare account email
+	 * @var string cloudflare api token
 	 */
-	private $cloudflare_email;
+	private $cloudflare_token;
 
 	/**
 	 * @var array cloudflare settings
@@ -227,6 +244,10 @@ class cloudflare_extension extends \EarthAsylumConsulting\abstract_extension
 	{
 		if ( ! parent::initialize() ) return; // disabled
 
+		$this->cloudflare_token = (defined('CLOUDFLARE_API_TOKEN'))
+			? CLOUDFLARE_API_TOKEN
+			: false;
+
 		// check for required settings
 		if (!$this->get_cloudflare_auth())
 		{
@@ -242,260 +263,7 @@ class cloudflare_extension extends \EarthAsylumConsulting\abstract_extension
 	public function admin_options_settings()
 	{
 		if (!$this->plugin->isSettingsPage(self::TAB_NAME)) return;
-
-		$this->registerExtensionOptions( $this->className,
-			[
-				'cloudflare_email'	=> array(
-						'type'		=>	'text',
-						'label'		=>	'Account Email',
-						'info'		=>	'Your Cloudflare account email address.',
-						'default'	=>	get_bloginfo('admin_email'),
-				),
-				'cloudflare_key'	=> array(
-						'type'		=>	'text',
-						'label'		=>	'Global API Key',
-						'info'		=>	'Your Cloudflare global API key.'.
-										'<br><small>From your <em>Account Profile</em> &rarr; API Tokens &rarr; API Keys &rarr; Global API Key</small>',
-				),
-			]
-		);
-
-		if ($this->get_cloudflare_auth())
-		{
-			$this->registerExtensionOptions( $this->className,
-			[
-				'cloudflare_zone'	=> array(
-						'type'		=>	'select',
-						'label'		=>	'Domain Zone',
-						'options'	=>	$this->get_zone_list(),
-						'info'		=>	'Your Cloudflare zone for this domain.',
-						'style'		=> 	'min-width:22ch;',
-				),
-			],
-			);
-		}
-		$this->registerExtensionOptions( $this->className,
-			[
-				'_break1'	=> array(
-						'type'		=>	'display',
-						'label'		=>	' ',
-						'default'	=>	' ',
-				),
-			]
-		);
-		if ($this->is_option('cloudflare_zone'))
-		{
-			$this->get_cf_options();
-
-			if (isset($_POST['_cloudflare_pause'])) {
-				$isPaused = ($_POST['_cloudflare_pause'] == 'Pause') ? 'Resume' : 'Pause';
-			} else {
-				$this->cloudflare_status = $this->get_zone_status();
-				$isPaused = ($this->cloudflare_status['paused']) ? 'Resume' : 'Pause';
-			}
-
-			if (isset($_POST['_cloudflare_ratelimit'])) {
-				$isLimit = ($_POST['_cloudflare_ratelimit'] == 'Add Rule') ? 'Delete' : 'Add';
-			} else {
-				$isLimit = ($this->get_ratelimit_rule()) ? 'Delete' : 'Add';
-			}
-
-			$optionNames = array_filter(
-				self::CLOUDFLARE_OPTIONS,
-				function($v) {return isset($this->cloudflare_settings[$v]);}
-			);
-			$optionValues = array_keys(
-				array_filter($this->cloudflare_settings,
-				function($v) {return $v == 'on';}
-			));
-
-
-			$blacklist_id = $this->get_blacklist_id(false,false) ?: 'blacklist';
-
-			// cleanup prior version option names or options to reset
-			$this->delete_option('cloudflare_options');
-			$this->delete_option('cloudflare_cache_level');
-			$this->delete_option('cloudflare_security');
-
-			$this->registerExtensionOptions( $this->className,
-			[
-				'_cloudflare_pause'=> array(
-						'type'		=>	'button',
-						'label'		=>	"{$isPaused} This Zone",
-						'default'	=>	$isPaused,
-						'after'		=> 	($isPaused == 'Resume')
-											? "<span style='color:var(--eac-wp-medium-red)' class='dashicons dashicons-warning'></span>" : "",
-						'info'		=>	"Pausing stops traffic from passing through the Cloudflare network, ".
-										"making your origin server IP address visible. ".
-										"Also, Cloudflare’s security and protection features become disabled.",
-						'validate'	=>	[$this,'pause_cloudflare_zone'],
-				),
-				'_cloudflare_security'=> array(
-						'type'		=>	'select',
-						'label'		=>	"Security Level",
-						'default'	=> 	$this->cloudflare_settings['security_level'],
-						'options'	=> 	[
-							'Off'			=> 'essentially_off',
-							'Low'			=> 'low',
-							'Medium'		=> 'medium',
-							'High'			=> 'high',
-							'*Under Attack*'=> 'under_attack',
-						],
-						'after'		=> 	($this->is_option('cloudflare_security','under_attack'))
-											? "<span style='color:var(--eac-wp-medium-red)' class='dashicons dashicons-warning'></span>" : "",
-						'info'		=> 	"Cloudflare's security automatically protects your domain from malicious traffic.".
-										"Off: Applies a very low threshold, challenging only the most extreme threats.<br>".
-										"Low: Challenges visitors who have a high threat score.<br>".
-										"Medium: Challenges visitors with a moderate or high threat score.<br>".
-										"High: Challenges any visitor with even a low threat score, plus additional suspicious profiles..<br>".
-										"Under Attack: Performs additional security checks to help mitigate layer 7 DDoS attacks.",
-						'help'		=>	"[info] Validated users access your website and suspicious traffic is blocked. ".
-										"It is designed to be used as one of the last resorts when a zone is under attack.",
-						'style'		=> 	'min-width:22ch;',
-						'validate'	=>	function($value){return $this->set_cf_setting('security_level',$value);},
-				),
-				'cloudflare_cachettl'=> array(
-						'type'		=>	'select',
-						'label'		=>	'Browser Cache Time-To-Live',
-						'default'	=> 	$this->cloudflare_settings['browser_cache_ttl'],
-						'options'	=> [
-							'Respect Existing Headers'	=> 0,
-							'2 minutes'			=> 2*MINUTE_IN_SECONDS,
-							'5 minutes'			=> 5*MINUTE_IN_SECONDS,
-							'20 minutes'		=> 20*MINUTE_IN_SECONDS,
-							'30 minutes'		=> 30*MINUTE_IN_SECONDS,
-							'1 hour'			=> 1*HOUR_IN_SECONDS,
-							'2 hours'			=> 2*HOUR_IN_SECONDS,
-							'3 hours'			=> 3*HOUR_IN_SECONDS,
-							'4 hours'			=> 4*HOUR_IN_SECONDS,
-							'5 hours'			=> 5*HOUR_IN_SECONDS,
-							'8 hours'			=> 8*HOUR_IN_SECONDS,
-							'12 hours'			=> 12*HOUR_IN_SECONDS,
-							'16 hours'			=> 16*HOUR_IN_SECONDS,
-							'20 hours'			=> 20*HOUR_IN_SECONDS,
-							'1 day'				=> 1*DAY_IN_SECONDS,
-							'2 days'			=> 2*DAY_IN_SECONDS,
-							'3 days'			=> 3*DAY_IN_SECONDS,
-							'4 days'			=> 4*DAY_IN_SECONDS,
-							'5 days'			=> 5*DAY_IN_SECONDS,
-							'8 days'			=> 8*DAY_IN_SECONDS,
-							'16 days'			=> 16*DAY_IN_SECONDS,
-							'24 days'			=> 24*DAY_IN_SECONDS,
-							'1 month'			=> 1*MONTH_IN_SECONDS,
-							'2 months'			=> 2*MONTH_IN_SECONDS,
-							'6 months'			=> 6*MONTH_IN_SECONDS,
-							'1 year'			=> 1*YEAR_IN_SECONDS,
-						],
-						'info'		=>	'Controls how long resources cached by client browsers remain valid.',
-						'help'		=>	'[info]<br><small>Zone &rarr; Caching &rarr; Configuration</small>',
-						'validate'	=>	function($value){return $this->set_cf_setting('browser_cache_ttl',(int)$value);},
-						'style'		=> 	'min-width:22ch;',
-				),
-				'_cloudflare_cache_level'=> array(
-						'type'		=>	'select',
-						'label'		=>	'Caching Level',
-						'default'	=> 	$this->cloudflare_settings['cache_level'],
-						'options'	=> [
-							'Bypass'			=> 'bypass',
-							'Basic'				=> 'basic',
-							'Simplified'		=> 'simplified',
-							'Aggressive'		=> 'aggressive',
-							'Everything'		=> 'cache_everything',
-						],
-						'info'		=>	"Caching levels determine how much of your website’s static content Cloudflare should cache.<br>".
-										"Bypass: Cloudflare does not cache.<br>".
-										"Basic: Delivers resources from cache when there is no query string<br>".
-										"Simplified: Delivers the same resource to everyone independent of the query string.<br>".
-										"Aggressive: Caches all static content that has a query string.<br>".
-										"Everything: Treats all content as static and caches all file types beyond the Cloudflare default cached content.",
-						'help'		=>	'[info]<br><small>Zone &rarr; Caching &rarr; Configuration</small>',
-						'validate'	=>	function($value){return $this->set_cf_setting('cache_level',$value);},
-						'style'		=> 	'min-width:22ch;',
-				),
-				'cloudflare_edge_cache'=> array(
-						'type'		=>	'switch',
-						'label'		=>	'Edge Caching',
-						'default'	=> 	$optionValues,
-						'options'	=>	['Support Edge Caching' => 'wp_edge_cache'],
-						'info'		=>	'Set cf-edge-cache &amp; x-html-edge-cache http headers to support custom rules or Automatic Platform Optimization. '.
-										'Additionally, adds cache-control with appropriate values for optimal caching, '.
-										'and edge-cache-tag indicating the requested document type (based on WordPress conditionals or mime type).',
-						'help'		=>	'[info] Custom rules can look for these headers (if set)...<br><small>'.
-										'cf-edge-cache: "cache,platform=wordpress" or "no-cache".<br>'.
-										'x-html-edge-cache: "cache,bypass-cookies=wp-|wordpress|woocommerce" or "no-cache" or "purgeall".<br>'.
-										'edge-cache-tag: index,text/html (home page example)'.
-										'</small>',
-				),
-				'_cloudflare_options'=> array(
-						'type'		=>	'switch',
-						'label'		=>	'Cloudflare Options',
-						'default'	=> 	$optionValues,
-						'options'	=>	$optionNames,
-						'info'		=>	'Enable/disable common Cloudflare options for speed &amp; security.',
-						'help'		=>	'[info] '.
-									'<br><small>Zone &rarr; Speed &rarr; Settings</small>'.
-									'<br><small>Zone &rarr; SSL/TLS &rarr; Edge Certificates</small>'.
-									'<br><small>Zone &rarr; Security &rarr; Settings</small>',
-						'validate'	=>	[$this,'set_cf_options'],
-				),
-				'_cloudflare_ratelimit'=> array(
-						'type'		=>	'button',
-						'label'		=>	"Rate Limit Rule",
-						'default'	=>	$isLimit.' Rule',
-						'info'		=>	"Adds a rate limiting rule to temporarily block IP addresses after 100 requests within 10 seconds. ".
-										"<br><small><strong><em>Set to work with free plans but may overwrite existing rule.</em></strong></small>",
-						'help'		=>	'[info]<br><small>Zone &rarr; Security &rarr; Security rules</small>',
-						'validate'	=>	[$this,'set_ratelimit_rule'],
-				),
-				'cloudflare_blacklist'=> array(
-						'type'		=>	'switch',
-						'label'		=>	'Risk Assessment Blacklist',
-						'options'	=>	["Blacklisting Enabled" => $blacklist_id],
-						'info'		=>	'When a request is blocked by the {eac}Doojigger Risk Assessment process, '.
-										'add the remote IP address to the Cloudflare blacklist to prevent further access to the site.',
-						'help'		=>	"[info] This creates or updates a Cloudflare IP list ".
-										"<small>(Account &rarr; Configurations &rarr; Lists)</small> ".
-										"and adds a security rule ".
-										"<small>(Zone &rarr; Security &rarr; Security Rules)</small> ".
-										"to block the list.<br>".
-										"<small>Note: To use an existing Cloudflare IP list, add <code>{eac}Cloudflare</code> to its description.</small>",
-						'validate'	=>	[$this,'set_cloudflare_blacklist'],
-				),
-				'cloudflare_blacklist_purge'=> array(
-						'when'		=> 	!empty($this->is_option('cloudflare_blacklist')),
-						'type'		=>	'select',
-						'label'		=>	'Blacklist Expiration',
-						'options'	=> [
-							'Indefinite'	=> 0,
-							'1 Hour'		=> HOUR_IN_SECONDS,
-							'4 Hours'		=> 4*HOUR_IN_SECONDS,
-							'8 Hours'		=> 8*HOUR_IN_SECONDS,
-							'12 Hours'		=> 12*HOUR_IN_SECONDS,
-							'1 Day'			=> DAY_IN_SECONDS,
-							'2 Days'		=> 2*DAY_IN_SECONDS,
-							'3 Days'		=> 3*DAY_IN_SECONDS,
-							'1 Week'		=> 7*DAY_IN_SECONDS,
-							'2 Weeks'		=> 14*DAY_IN_SECONDS,
-							'1 Month'		=> MONTH_IN_SECONDS,
-							'3 Months'		=> 3*MONTH_IN_SECONDS,
-						],
-						'info'		=>	'Controls how long an IP address is blacklisted due to Risk Assessment.',
-						'help'		=> 	'[info] The Cloudflare blacklist is purged hourly.',
-						'style'		=> 	'min-width:22ch;',
-				),
-			]);
-		}
-		$this->registerExtensionOptions( $this->className,
-			[
-				'_cloudflare_link'	=> array(
-						'type'		=>	'display',
-						'label'		=>	'Cloudflare Dashboard',
-						'info'		=>	'For full access to and management of your domain(s).',
-						'default'	=>	"&rarr; <a href='https://dash.cloudflare.com/' target='_blank'>Log in to your Cloudflare Dashboard</a><br>".
-										"&rarr; <a href='https://www.support.cloudflare.com/' target='_blank'>Visit the Cloudflare Help Center</a>",
-				),
-			]
-		);
+		require_once 'cloudflare.options.php';
 	}
 
 
@@ -505,7 +273,7 @@ class cloudflare_extension extends \EarthAsylumConsulting\abstract_extension
 	 */
 	public function admin_options_help()
 	{
-		if (!$this->plugin->isSettingsPage(self::TAB_NAME)) return;
+	//	if (!$this->plugin->isSettingsPage(self::TAB_NAME)) return;
 	}
 
 
@@ -517,32 +285,61 @@ class cloudflare_extension extends \EarthAsylumConsulting\abstract_extension
 	{
 		if ($this->is_option('cloudflare_edge_cache','wp_edge_cache'))
 		{
-			// do this late
-			add_filter('wp_headers',			array($this, 'set_cf_edge_cache'),PHP_INT_MAX,1);
-			add_filter('nocache_headers',		function($headers)
+			add_filter('nocache_headers', 		function($headers)
 			{
 				$headers['cf-edge-cache'] = 'no-cache';
 				return $headers;
-			},PHP_INT_MAX);
+			});
+
+			// doing this late/last
+			add_filter('wp_headers', 			function($headers)
+			{
+				add_filter('wp_headers',		array($this, 'set_cf_edge_cache'),PHP_INT_MAX,1);
+				return $headers;
+			});
 		}
 
-		$this->add_filter('after_flush_caches', array($this,'purge_cloudflare_cache'),100,1);
-		$this->add_action('cloudflare_purge',	array($this,'purge_cloudflare_cache'),100,1);
-		$this->add_action('cloudflare_pause',	function(){$this->pause_cloudflare_zone('Pause');});
-		$this->add_action('cloudflare_resume',	function(){$this->pause_cloudflare_zone('Resume');});
+		// blacklisting based on risk assessment
+		if ($this->is_option('cloudflare_blacklist'))
+		{
+			if ($this->is_option('cloudflare_blacklist_purge')) {
+				$this->do_action( 'add_event_task', 'hourly',	array($this, 'blacklist_purge'));
+			}
+
+			// Security -> Risk Assessment
+			$this->add_action('risk_assessment_blocked',		array($this, 'add_ip_to_blacklist'),10,2 );
+			$this->add_action('risk_assessment_unblocked',		array($this, 'remove_ip_from_blacklist'),10,1);
+		}
+
+		// actions available to outside actors
+		add_action('cloudflare_pause',			function(){$this->pause_cloudflare_zone('Pause');});
+		add_action('cloudflare_resume',			function(){$this->pause_cloudflare_zone('Resume');});
+		add_action('cloudflare_purge',			array($this,'purge_cloudflare_cache'),10,0);
+		add_action('cloudflare_purge_tags',		array($this,'purge_cloudflare_tags'),10,3);
+
+		add_action('init',						array($this,'add_purge_actions'),100);
+	}
+
+
+	/**
+	 * Add cloudflare cache purge actions on init
+	 *
+	 */
+	public function add_purge_actions()
+	{
+		if (defined('CLOUDFLARE_CACHETAG_PREFIX') && is_scalar(CLOUDFLARE_CACHETAG_PREFIX)) {
+			$this->cf_tag_prefix = rtrim((string)CLOUDFLARE_CACHETAG_PREFIX,'-').'-';
+		} else if (is_multisite()) {
+			$this->cf_tag_prefix = 'site'.(string)get_current_blog_id().'-';
+		} else if (function_exists('\wp_get_environment_type')) {
+			$this->cf_tag_prefix = substr(wp_get_environment_type(),0,1).'-';
+		}
 
 		$purge_actions = array(
 			'switch_theme',						// Switch theme
 			'customize_save_after',				// Customizer
-		//	  'edit_post',						  // Edit a post
-		//	  'deleted_post',					  // Delete a post
-		//	  'delete_attachment',				  // Delete/replace an attachment
-		//	  'transition_post_status',			  // When published
-			'clean_post_cache',					// When a post changes
-			'clean_page_cache',					// When a page changes
-			'transition_comment_status',		// When approved
-			'comment_post',						// When added
 		/*
+			'eacDoojigger_after_flush_caches'	// after flushing WP caches
 			'autoptimize_action_cachepurged'	// Autoptimize plugin
 			'cache_enabler_clear_site_cache'	// Cache Enabler plugin
 			'w3tc_flush_all'					// W3 Total Cache plugin
@@ -552,24 +349,65 @@ class cloudflare_extension extends \EarthAsylumConsulting\abstract_extension
 		*/
 		);
 
+		if (defined('CLOUDFLARE_PURGE_ACTIONS') && is_array(CLOUDFLARE_PURGE_ACTIONS)) {
+			$purge_actions = array_merge($purge_actions,CLOUDFLARE_PURGE_ACTIONS);
+		}
+
 		/**
 		 * filter 'cloudflare_purge_everything_actions' (same as cloudflare plugin)
 		 * @param array actions to trigger cache purge
 		 */
 		$purge_actions = apply_filters('cloudflare_purge_everything_actions', $purge_actions);
 
-		foreach ($purge_actions as $action) {	// no arguments
-			add_action($action,					array($this,'purge_cloudflare_cache'),100,0);
+		// purge everything
+		foreach ($purge_actions as $action) {
+			add_filter($action,					array($this,'purge_cloudflare_cache'),10,1);
 		}
 
-		if ($this->is_option('cloudflare_blacklist'))
-		{
-			$this->add_action('risk_assessment_blocked',		array($this, 'add_ip_to_blacklist'),10,2 );
-			if ($this->is_option('cloudflare_blacklist_purge')) {
-				$this->do_action( 'add_event_task', 'hourly',	array($this, 'blacklist_purge'));
+		foreach (['post','term','user'] as $trigger) {
+			$purge_actions = array(
+				"clean_{$trigger}_cache"		// action triggered on update
+			);
+			/**
+			 * filter 'cloudflare_purge_[post|term|user]_actions'
+			 * @param array actions to trigger cache purge by tag
+			 */
+			$purge_actions = apply_filters("cloudflare_purge_{$trigger}_actions", $purge_actions);
+
+			// purge by tag(s)
+			foreach ($purge_actions as $action) {
+				add_action($action,				function($id,$object) use($trigger) {
+					$type = match($trigger) {
+						'post'	=> is_object($object) ? $object->post_type : $trigger,
+						'user' 	=> 'author',
+						default	=> is_string($object) ? $object : $trigger,
+					};
+					$this->purge_cloudflare_tags($type,$id,$object);
+				},10,2);
 			}
 		}
+
+		// purge post after comment addition
+		add_action('comment_post', 				function($id,$status,$comment) {
+	        if ($comment_status == 1 && is_array($comment) && $comment['comment_post_ID']) {
+				$this->purge_cloudflare_tags('post',$comment['comment_post_ID']);
+			}
+		},10,3);
+
+		// purge post after comment status change
+		add_action('transition_comment_status', function($old,$new,$comment) {
+	        if ($old == 'approved' || $new == 'approved') {
+				$this->purge_cloudflare_tags('post',$comment['comment_post_ID']);
+			}
+		},10,3);
 	}
+
+
+	/**
+	 *
+	 * Account/zone
+	 *
+	 */
 
 
 	/**
@@ -578,17 +416,26 @@ class cloudflare_extension extends \EarthAsylumConsulting\abstract_extension
 	 */
 	public function get_cloudflare_auth(): bool
 	{
+		$authMethod = false;
+
 		// check for required settings
-		if ( (!$this->cloudflare_key   && !($this->cloudflare_key	= $this->get_option('cloudflare_key'))) ) {
-			return false;
+		if ( ($this->cloudflare_token || ($this->cloudflare_token = $this->get_option_decrypt('cloudflare_token'))) ) {
+			$authMethod = 'token';
+		} else {
+			if ( (!$this->cloudflare_key   && !($this->cloudflare_key	= $this->get_option('cloudflare_key'))) ) {
+				return false;
+			}
+			if ( (!$this->cloudflare_email && !($this->cloudflare_email = $this->get_option('cloudflare_email'))) ) {
+				return false;
+			}
+			$authMethod = 'emailkey';
 		}
-		if ( (!$this->cloudflare_email && !($this->cloudflare_email = $this->get_option('cloudflare_email'))) ) {
-			return false;
-		}
+
 		if ($this->cloudflare_zone	= $this->get_option('cloudflare_zone'))
 		{
 			$this->cf_zone_url 		= sprintf(self::CLOUDFLARE_URL,'zones',$this->cloudflare_zone);
 		}
+
 		return true;
 	}
 
@@ -607,7 +454,7 @@ class cloudflare_extension extends \EarthAsylumConsulting\abstract_extension
 					$result = $this->cf_api_request('get',sprintf(SELF::CLOUDFLARE_URL,'accounts',''));
 					return ($result['success']) ? $result['result'][0] : null;
 				},
-				DAY_IN_SECONDS/2
+				self::TRANSIENT_ACCOUNT_TTL
 			);
 		}
 		$this->cf_account_url 	= sprintf(self::CLOUDFLARE_URL,'accounts',$this->cloudflare_account['id']);
@@ -636,7 +483,7 @@ class cloudflare_extension extends \EarthAsylumConsulting\abstract_extension
 					}
 					return $zones;
 				},
-				DAY_IN_SECONDS/2
+				self::TRANSIENT_ZONE_TTL
 			);
 			return $zones;
 		}
@@ -675,7 +522,7 @@ class cloudflare_extension extends \EarthAsylumConsulting\abstract_extension
 						$this->add_admin_notice("Cloudflare: Status (".$result['errors'][0]['code'].") ".$result['errors'][0]['message'],'error');
 					}
 				},
-				MINUTE_IN_SECONDS*15
+				self::TRANSIENT_ZONE_TTL
 			);
 			$this->cloudflare_account = ['id' => $status['account']['id'] ];
 			return $status;
@@ -685,11 +532,18 @@ class cloudflare_extension extends \EarthAsylumConsulting\abstract_extension
 
 
 	/**
+	 *
+	 * Options (local) and settings (cloudflare)
+	 *
+	 */
+
+
+	/**
 	 * Get our cloudflare options
 	 * either posted or from cloudflare
 	 *
 	 */
-	public function get_cf_options(): array
+	public function get_cf_options($withPost=true): array
 	{
 		if ($this->get_cloudflare_auth() && $this->cf_zone_url)
 		{
@@ -698,8 +552,13 @@ class cloudflare_extension extends \EarthAsylumConsulting\abstract_extension
 
 			foreach(self::CLOUDFLARE_OPTIONS as $name => $id)
 			{
-				$value = (isset($_POST['_cloudflare_options'][$id])) ? 'on' : $settings[$id] ?? 'off';
-				if ($value == 'on') $options[] = $id;
+				if ($withPost && isset($_POST['_cloudflare_options'])) {
+					$value = (in_array($id,$_POST['_cloudflare_options']))
+						? 'on' : ( (isset($settings[$id])) ? 'off' : false );
+				} else {
+					$value = $settings[$id] ?? false;
+				}
+				if ($value) $options[$id] = $value;
 			}
 
 			return $options;
@@ -714,22 +573,20 @@ class cloudflare_extension extends \EarthAsylumConsulting\abstract_extension
 	 */
 	private function get_cf_settings(): array
 	{
-		$settings = $this->get_transient(self::TRANSIENT_ZONE_SETTINGS, function()
+		$this->cloudflare_settings = $this->get_transient(self::TRANSIENT_ZONE_SETTINGS, function()
 			{
 				$settings = [];
-				// get all zone settings (this api is deprecated and may be revoked)
+				// get all editable zone settings (this api is deprecated and may be revoked)
 				$result = $this->cf_api_request('get',$this->cf_zone_url . "/settings");
 				if ($result['success']) {
 					foreach ( $result['result'] as $setting ) {
-						if (isset($setting['value'],$setting['id'])) {
-							if ($setting['editable']) {
-								$settings[ $setting['id'] ] = $setting['value'];
-							}
+						if ($setting['editable']) {
+							$settings[ $setting['id'] ] = $setting['value'];
 						}
 					}
-				// if failure, get each setting individually (may produces different results)
+				// on failure, get each setting individually
 				} else {
-					foreach(self::CLOUDFLARE_OPTIONS as $name => $id) {
+					foreach(array_merge(self::CLOUDFLARE_OPTIONS,self::CLOUDFLARE_SETTINGS) as $id) {
 						if ($setting = $this->get_cf_setting($id)) {
 							if ($setting['editable']) {
 								$settings[ $setting['id'] ] = $setting['value'];
@@ -737,22 +594,12 @@ class cloudflare_extension extends \EarthAsylumConsulting\abstract_extension
 						}
 					}
 				}
-				// get individual settings
-				foreach(self::CLOUDFLARE_UNIQUE as $name => $id) {
-					if ($setting = $this->get_cf_setting($id)) {
-						if ($setting['editable']) {
-							$settings[ $setting['id'] ] = $setting['value'];
-						}
-					}
-				}
 				return $settings;
 			},
-			MINUTE_IN_SECONDS*15
+			self::TRANSIENT_ZONE_TTL
 		);
-		foreach ($settings as $id => $value) {
-			$this->cloudflare_settings[ $id ] = $value;
-		}
-		return $settings;
+
+		return $this->cloudflare_settings;
 	}
 
 
@@ -776,12 +623,13 @@ class cloudflare_extension extends \EarthAsylumConsulting\abstract_extension
 	public function set_cf_options($value, $fieldName, $metaData, $priorValue)
 	{
 		if (!is_array($value)) $value = [];
-		if (!is_array($priorValue)) $priorValue = [];
+		//if (!is_array($priorValue))
+		$priorValue = array_keys( array_filter($this->get_cf_options(false),fn($v) => $v == 'on') );
 
 		if ($this->get_cloudflare_auth() && $this->cf_zone_url)
 		{
 			$settings = $this->get_transient(self::TRANSIENT_ZONE_SETTINGS,[]);
-			foreach(self::CLOUDFLARE_OPTIONS as $name => $id)
+			foreach(self::CLOUDFLARE_OPTIONS as $id)
 			{
 				if ( (in_array($id,$value) && !in_array($id,$priorValue))
 				||	 (!in_array($id,$value) && in_array($id,$priorValue))
@@ -790,7 +638,7 @@ class cloudflare_extension extends \EarthAsylumConsulting\abstract_extension
 				}
 			}
 
-			$this->set_transient(self::TRANSIENT_ZONE_SETTINGS,$settings,MINUTE_IN_SECONDS*15);
+			$this->set_transient(self::TRANSIENT_ZONE_SETTINGS,$settings,self::TRANSIENT_ZONE_TTL);
 		}
 		return (array)$value;
 	}
@@ -813,16 +661,20 @@ class cloudflare_extension extends \EarthAsylumConsulting\abstract_extension
 			return false;
 		}
 
-		if (!in_array($id,self::CLOUDFLARE_OPTIONS)) {
-			if ($settings = $this->get_transient(self::TRANSIENT_ZONE_SETTINGS)) {
-				if (isset($settings[$id])) {
-					$settings[$id] = $value;
-					$this->set_transient(self::TRANSIENT_ZONE_SETTINGS,$settings,MINUTE_IN_SECONDS*15);
-				}
-			}
+		if (in_array($id,self::CLOUDFLARE_SETTINGS)) {
+			$settings = $this->get_transient(self::TRANSIENT_ZONE_SETTINGS,[]);
+			$settings[$id] = $value;
+			$this->set_transient(self::TRANSIENT_ZONE_SETTINGS,$settings,self::TRANSIENT_ZONE_TTL);
 		}
 		return $value;
 	}
+
+
+	/**
+	 *
+	 * Caching Headers
+	 *
+	 */
 
 
 	/**
@@ -832,23 +684,34 @@ class cloudflare_extension extends \EarthAsylumConsulting\abstract_extension
 	 */
 	public function set_cf_edge_cache(?array $headers)
 	{
+		/*
+			HTTP/2 & HTTP/3: The specification (RFC 9113) requires that header names
+			must be converted to lowercase before they are transmitted over the network.
+		*/
+		$headers = is_array($headers) ? array_change_key_case($headers, CASE_LOWER) : [];
 		/**
 		 * filter 'cloudflare_use_cache' - override cache setting (same as cloudflare plugin)
 		 * @param bool enable caching
 		 */
 		if (apply_filters('cloudflare_use_cache', $this->is_cacheable($headers))) {
-			$headers = is_array($headers) ? array_change_key_case($headers, CASE_LOWER) : [];
 			if ($ttl = $this->get_option('cloudflare_cachettl')) {
 				header_remove('cache-control');
 				$headers['cache-control']	= "public,max-age={$ttl}";
 			}
 			$headers['x-html-edge-cache'] 	= "cache,bypass-cookies=wp-|wordpress|woocommerce";
 			$headers['cf-edge-cache']		= 'cache,platform=wordpress';
-			$headers['edge-cache-tag']		= $this->get_cache_tag_type($headers);
+			$headers['cache-tag']			= $this->get_cache_tag_type($headers);
 		} else {
 			$headers['x-html-edge-cache'] 	= "no-cache";
 			$headers['cf-edge-cache']		= 'no-cache';
 		}
+		/*
+		$result = array_reduce(array_keys($headers), function($carry, $key) use ($headers) {
+			$new_key = ucwords($key,"-");
+			$carry[$new_key] = $headers[$key];
+			return $carry;
+		}, []);
+		*/
 		return $headers;
 	}
 
@@ -860,34 +723,26 @@ class cloudflare_extension extends \EarthAsylumConsulting\abstract_extension
 	 */
 	protected function is_cacheable($headers)
 	{
+		if (defined('CLOUDFLARE_USE_CACHE') && ! CLOUDFLARE_USE_CACHE) {
+			return false;
+		}
 		if ($_SERVER['REQUEST_METHOD'] != 'GET') {
 			return false;
 		}
 		if (http_response_code() != 200) {
 			return false;
 		}
-	/*
-		if (defined('XMLRPC_REQUEST') && XMLRPC_REQUEST) {
-			return false;
-		}
-		if (defined('REST_REQUEST') && REST_REQUEST) {
-			return false;
-		}
-		if (wp_is_xml_request()) {
-			return false;
-		}
-	*/
 		if ($this->doing_ajax() || is_user_logged_in()) {
 			return false;
 		}
-		if (class_exists('woocommerce') &&
+		if (class_exists('woocommerce',false) &&
 			(is_cart() || is_checkout() || is_order_received_page() || is_account_page())) {
 			return false;
 		}
-		$checkHeaders = array_change_key_case( array_merge(
-			$this->explode_with_keys(':',headers_list()),
-			$headers
-		), CASE_LOWER);
+		$checkHeaders = array_merge(
+			array_change_key_case($this->explode_with_keys(':',(array)headers_list()),CASE_LOWER),
+			(array)$headers
+		);
 		if (isset($checkHeaders['cache-control'])) {
 			if (str_contains($checkHeaders['cache-control'],'no-cache')) {
 				return false;
@@ -898,12 +753,17 @@ class cloudflare_extension extends \EarthAsylumConsulting\abstract_extension
 			if (str_contains($checkHeaders['cache-control'],'private')) {
 				return false;
 			}
-			if (str_contains($checkHeaders['cache-control'],'must-revalidate')) {
-				return false;
-			}
+		//	if (str_contains($checkHeaders['cache-control'],'must-revalidate')) {
+		//		return false;
+		//	}
 		}
 		if (isset($checkHeaders['pragma'])) {
 			if (str_contains($checkHeaders['pragma'],'no-cache')) {
+				return false;
+			}
+		}
+		if (isset($checkHeaders['cf-edge-cache'])) {
+			if (str_contains($checkHeaders['cf-edge-cache'],'no-cache')) {
 				return false;
 			}
 		}
@@ -922,66 +782,131 @@ class cloudflare_extension extends \EarthAsylumConsulting\abstract_extension
 	 * Get the mime type for the current request
 	 *
 	 */
-	protected function get_cache_tag_type($headers,$extension='')
+	protected function get_cache_tag_terms($theID,$optTerm=null)
+	{
+		$cacheTags = [];
+		if ($tags = get_the_category($theID)) {
+			foreach ($tags as $tag) {
+				$cacheTags[] = $this->cf_tag_prefix.'category-'.$tag->term_id;
+			}
+		}
+		if ($tags = get_the_tags($theID)) {
+			foreach ($tags as $tag) {
+				$cacheTags[] = $this->cf_tag_prefix.'tag-'.$tag->term_id;
+			}
+		}
+
+		if ($optTerm) {
+			foreach ((array)$optTerm as $term) {
+				if ($tags = get_the_terms($theID,$term)) {
+					foreach ($tags as $tag) {
+						$cacheTags[] = $this->cf_tag_prefix.$term.'-'.$tag->term_id;
+					}
+				}
+			}
+		}
+		return $cacheTags;
+	}
+
+
+	/**
+	 * Get the mime type for the current request
+	 *
+	 */
+	protected function get_cache_tag_type($headers)
 	{
 		global $wp_query;
 
-		$cacheTag = [];
+		$cacheTags = [];
+		$theID = get_queried_object_id();
 
 		if ( isset( $wp_query ) ) {
-			if (is_front_page() ||
-				is_home()) $cacheTag[] = 'index';
-			if (is_page()) $cacheTag[] = 'page';
-			if (is_single()) $cacheTag[] = 'post';
-			if (is_search()) $cacheTag[] = 'search';
-			if (is_category()) $cacheTag[] = 'category';
-			if (is_tag()) $cacheTag[] = 'tag';
-			if (is_tax()) $cacheTag[] = 'taxonomy';
-			if (is_author()) $cacheTag[] = 'author';
-			if (is_date()) $cacheTag[] = 'date';
-			if (is_archive()) $cacheTag[] = 'archive';
-			if (function_exists('is_product') && is_product()) $cacheTag[] = 'product_item';
-			if (function_exists('is_product_category') && is_product_category()) $cacheTag[] = 'product_category';
-			if (function_exists('is_product_tag') && is_product_tag()) $cacheTag[] = 'product_tag';
-			if (function_exists('is_shop') && is_shop()) $cacheTag[] = 'shop';
+			if (is_front_page() || is_home()) {
+				$cacheTags[] = $this->cf_tag_prefix.'index';
+				$cacheTags = $cacheTags + $this->get_cache_tag_terms($theID);
+			}
+			if (is_page()) {
+				$cacheTags[] = $this->cf_tag_prefix.'page';
+				$cacheTags[] = $this->cf_tag_prefix.'page-'.$theID;
+				$cacheTags = $cacheTags + $this->get_cache_tag_terms($theID);
+			}
+			if (is_single()) {
+				$type = get_queried_object()->post_type;
+				$cacheTags[] = $this->cf_tag_prefix.$type;
+				$cacheTags[] = $this->cf_tag_prefix.$type.'-'.$theID;
+				$cacheTags = $cacheTags + $this->get_cache_tag_terms($theID);
+    		}
+			if (is_category()) {
+				$cacheTags[] = $this->cf_tag_prefix.'category';
+				$cacheTags[] = $this->cf_tag_prefix.'category-'.$theID;
+			}
+			if (is_tag()) {
+				$cacheTags[] = '$this->cf_tag_prefix.tag';
+				$cacheTags[] = $this->cf_tag_prefix.'tag-'.$theID;
+			}
+			if (is_author()) {
+				$cacheTags[] = $this->cf_tag_prefix.'author';
+				$cacheTags[] = $this->cf_tag_prefix.'author-'.$theID;
+			}
+			if (is_search()) $cacheTags[] = $this->cf_tag_prefix.'search';
+			if (is_attachment()) $cacheTags[] = $this->cf_tag_prefix.'attachment';
+			if (is_tax()) $cacheTags[] = $this->cf_tag_prefix.'taxonomy';
+			if (is_date()) $cacheTags[] = $this->cf_tag_prefix.'date';
+			if (is_archive()) $cacheTags[] = $this->cf_tag_prefix.'archive';
+			if (is_feed()) $cacheTags[] = $this->cf_tag_prefix.'feed';
 		}
-
-		if (empty($extension) && array_key_exists('REQUEST_URI', $_SERVER))
-		{
-			$extension = explode('?',$_SERVER['REQUEST_URI']);
-			$extension = pathinfo(trim($extension[0],'/'),PATHINFO_EXTENSION);
+		if (function_exists('is_product') && is_product()) {
+			// is_single() already added 'product','
+			$cacheTags = $cacheTags + $this->get_cache_tag_terms($theID,['product_cat','product_tag']);
 		}
+		if (function_exists('is_product_category') && is_product_category()) {
+			$cacheTags[] = $this->cf_tag_prefix.'product_cat';
+			$cacheTags[] = $this->cf_tag_prefix.'product_cat-'.$theID;
+		}
+		if (function_exists('is_product_tag') && is_product_tag()) {
+			$cacheTags[] = $this->cf_tag_prefix.'product_tag';
+			$cacheTags[] = $this->cf_tag_prefix.'product_tag-'.$theID;
+		}
+		if (function_exists('is_shop') && is_shop()) $cacheTags[] = $this->cf_tag_prefix.'shop';
 
 		if (isset($headers['content-type'])) {
 			list($contentType,) = explode(';',$headers['content-type']);
-			$type = explode($contentType,';');
-			$cacheTag[] = trim($type[0]);
+			$cacheTags[] = trim($contentType);
 		} else
 		if (defined('REST_REQUEST') && REST_REQUEST) {
-			$cacheTag[] = 'application/json';
+			$cacheTags[] = 'application/json';
 		} else
 		if (wp_is_json_request()) {
-			$cacheTag[] = 'application/json';
+			$cacheTags[] = 'application/json';
 		} else
 		if (defined('XMLRPC_REQUEST') && XMLRPC_REQUEST) {
-			$cacheTag[] = 'text/xml';
+			$cacheTags[] = 'text/xml';
 		} else
 		if (wp_is_xml_request()) {
-			$cacheTag[] = 'text/xml';
+			$cacheTags[] = 'text/xml';
 		} else
-		if ($extension) {
+		if (array_key_exists('REQUEST_URI', $_SERVER)) {
 			$mime_types = array_merge(wp_get_mime_types(),[
 				'json'		=> 'application/json',
 				'xml'		=> 'text/xml',
 				'rss'		=> 'application/rss+xml',
 			]);
-			if (isset($mime_types[$extension])) {
-				$cacheTag[] = $mime_types[$extension];
-			}
-		} else $cacheTag[] = get_option( 'html_type' );
+			$type = wp_check_filetype($_SERVER['REQUEST_URI'],$mime_types);
+			$cacheTags[] = ($type['type']) ? $type['type'] : get_option( 'html_type' );
+		} else {
+			$cacheTags[] = get_option( 'html_type' );
+		}
 
-		return implode(',',$cacheTag);
+		return ltrim( rtrim($headers['cache-tag'] ?? '',',;') .
+				','.implode(',',array_unique(array_filter($cacheTags))), ',');
 	}
+
+
+	/**
+	 *
+	 * Purging cache
+	 *
+	 */
 
 
 	/**
@@ -994,27 +919,89 @@ class cloudflare_extension extends \EarthAsylumConsulting\abstract_extension
 		static $onlyOnce = 0;
 		if ($onlyOnce++) return $caches;
 
+		$method = (defined('CLOUDFLARE_CACHE_PURGE') &&
+				 (CLOUDFLARE_CACHE_PURGE == 'hard' || CLOUDFLARE_CACHE_PURGE == 'purge'))
+		? '/purge_cache' : '/invalidate_cache';
+
 		if ($this->get_cloudflare_auth() && $this->cf_zone_url)
 		{
 			$site_url = parse_url( get_site_url() );
 			$site_url = trailingslashit($site_url['host'] . ($site_url['path'] ?? '')).'*';
 
-			$result = $this->cf_api_request('post',$this->cf_zone_url . "/purge_cache",
+			$result = $this->cf_api_request('post',$this->cf_zone_url . $method,
 				[
 					'body' => [ "prefixes" => [$site_url] ]
 				]
 			);
 
 			if ($result['success']) {
+				if (is_array($caches)) $caches[] = 'Cloudflare Cache';
 				$this->add_admin_notice('The Cloudflare cache for '.$site_url.' has been purged','success');
-				$caches[] = 'Cloudflare Cache';
+				$this->logNotice(current_action().': The Cloudflare cache has been purged');
 			} else {
-				$this->add_admin_notice("Cloudflare Cache Purge: (".$result['errors'][0]['code'].") ".$result['errors'][0]['message'],'error');
+				$this->add_admin_notice('Cloudflare Cache Purge: '.$result['errors'][0]['message'],'error');
+				$this->logError(current_action().": Cloudflare Cache Purge: (".$result['errors'][0]['code'].") ".$result['errors'][0]['message']);
 			}
 		}
-		header("x-html-edge-cache: purgeall");
+		//header("x-html-edge-cache: purgeall");
 		return $caches;
 	}
+
+
+	/**
+	 * Purge the cloudflare cache by cache-tag(s)
+	 *
+	 * @param string type (page/post/category/tag)
+	 * @param int[] object id number(s)
+	 * @param object optional
+	 */
+	public function purge_cloudflare_tags($type,$ids,$object=null)
+	{
+		if ($type == 'revision') return;
+
+		if (!$this->is_option('cloudflare_edge_cache','wp_edge_cache'))
+		{
+			return $this->purge_cloudflare_cache();
+		}
+
+		if (!is_array($ids)) $ids = array($ids);
+		$cacheTags = [];
+		foreach ($ids as $id) {
+			$cacheTags[] = $this->cf_tag_prefix.$type.'-'.$id;
+			if ($type == 'post') {
+				$cacheTags = $cacheTags + $this->get_cache_tag_terms($id);
+			}
+		}
+		$cacheTags = array_unique($cacheTags);
+
+		$method = (defined('CLOUDFLARE_CACHE_PURGE') &&
+				 (CLOUDFLARE_CACHE_PURGE == 'hard' || CLOUDFLARE_CACHE_PURGE == 'purge'))
+		? '/purge_cache' : '/invalidate_cache';
+
+		if (!empty($cacheTags) && $this->get_cloudflare_auth() && $this->cf_zone_url)
+		{
+			$result = $this->cf_api_request('post',$this->cf_zone_url . $method,
+				[
+					'body' => [ "tags" => $cacheTags ]
+				]
+			);
+
+			if ($result['success']) {
+				$this->add_admin_notice('The Cloudflare cache has been purged using tags','success',implode(',',$cacheTags));
+				$this->logNotice($cacheTags,current_action().': The Cloudflare cache has been purged using tags');
+			} else {
+				$this->add_admin_notice('Cloudflare Tag Purge: '.$result['errors'][0]['message'],'error');
+				$this->logError(current_action().": Cloudflare Tag Purge: (".$result['errors'][0]['code'].") ".$result['errors'][0]['message']);
+			}
+		}
+	}
+
+
+	/**
+	 *
+	 * Pause/Resume
+	 *
+	 */
 
 
 	/**
@@ -1038,12 +1025,21 @@ class cloudflare_extension extends \EarthAsylumConsulting\abstract_extension
 			if ($result['success']) {
 				$site_id = $result['result']['name'];
 				$this->add_admin_notice("The Cloudflare service for {$site_id} has been {$option}d",'success');
+				$this->logDebug("The Cloudflare service for {$site_id} has been {$option}d");
 			} else {
-				$this->add_admin_notice("Cloudflare Service {$option}: (".$result['errors'][0]['code'].") ".$result['errors'][0]['message'],'error');
+				$this->add_admin_notice('Cloudflare Service {$option}: '.$result['errors'][0]['message'],'error');
+				$this->logError("Cloudflare Service {$option}: (".$result['errors'][0]['code'].") ".$result['errors'][0]['message']);
 			}
 		}
 		return $option;
 	}
+
+
+	/**
+	 *
+	 * Handle Rate Limiting
+	 *
+	 */
 
 
 	/**
@@ -1077,8 +1073,14 @@ class cloudflare_extension extends \EarthAsylumConsulting\abstract_extension
 		{
 			if ($this->get_ratelimit_rule()) {
 				$this->add_admin_notice("Cloudflare Ratelimit: existing ratelimit rule found.",'success');
-				return;
+				return $value;
 			}
+
+			$limit = (defined('CLOUDFLARE_TEMP_RATE_LIMIT')) ? CLOUDFLARE_TEMP_RATE_LIMIT : [500,10];
+			$period = 10;
+			if (is_array($limit)) list($limit, $period) = $limit;
+			if (!is_numeric($limit) || $limit < 100) $limit = 500;
+			if (!is_numeric($period) || $period < 10) $period = 10;
 
 			$rule = [
 				[
@@ -1087,8 +1089,8 @@ class cloudflare_extension extends \EarthAsylumConsulting\abstract_extension
 							'ip.src',
 							'cf.colo.id'
 						],
-						'period' => 10, // required, free plan
-						'requests_per_period' => 100,
+						'period' => $period, // 10 required, free plan
+						'requests_per_period' => $limit,
 						'requests_to_origin' => false,
 						'mitigation_timeout' => 10 // required, free plan
 					],
@@ -1108,7 +1110,7 @@ class cloudflare_extension extends \EarthAsylumConsulting\abstract_extension
 			if ($result['success']) {
 				$this->add_admin_notice("Cloudflare Ratelimit: <em>".self::RATE_LIMIT_DESC.'</em> created.','success');
 			} else {
-				$this->add_admin_notice("Cloudflare Ratelimit: (".$result['errors'][0]['code'].") ".$result['errors'][0]['message'],'error');
+				$this->add_admin_notice('Cloudflare Ratelimit: '.$result['errors'][0]['message'],'error');
 			}
 			return $value;
 		}
@@ -1129,7 +1131,7 @@ class cloudflare_extension extends \EarthAsylumConsulting\abstract_extension
 						if ($result['success']) {
 							$this->add_admin_notice("Cloudflare Ratelimit: <em>".self::RATE_LIMIT_DESC.'</em> removed.','success');
 						} else {
-							$this->add_admin_notice("Cloudflare Ratelimit: (".$result['errors'][0]['code'].") ".$result['errors'][0]['message'],'error');
+							$this->add_admin_notice('Cloudflare Ratelimit: '.$result['errors'][0]['message'],'error');
 						}
 						return $value;
 					}
@@ -1141,13 +1143,23 @@ class cloudflare_extension extends \EarthAsylumConsulting\abstract_extension
 
 
 	/**
+	 *
+	 * Handle Blacklisting (on Risk Assessment)
+	 *
+	 */
+
+
+	/**
 	 * Add IP to Cloudflare blacklist (IP access rules)
+	 * risk_assessment_blocked
 	 *
 	 * @param string	$ipAddress
 	 * @param array		$data
 	 */
 	public function add_ip_to_blacklist(string $ipAddress, array $data)
 	{
+		if (is_user_logged_in() && $ipAddress == $this->getVisitorIP()) return;
+
 		if ($list_id = $this->get_blacklist_id(false))
 		{
 			$list_url = $this->cf_account_url . "/rules/lists";
@@ -1169,7 +1181,9 @@ class cloudflare_extension extends \EarthAsylumConsulting\abstract_extension
 			}
 			// show location
 			$location = $data['Region'] ?: $data['City'];
-			$comment .= "; [".trim($location.' '.$data['CountryCode'])."]";
+			if ($location) {
+				$comment .= "; [".trim($location.' '.$data['CountryCode'])."]";
+			}
 
 			$result = $this->cf_api_request('post',$list_url."/{$list_id}/items",
 				[
@@ -1195,6 +1209,18 @@ class cloudflare_extension extends \EarthAsylumConsulting\abstract_extension
 
 
 	/**
+	 * Remove IP from Cloudflare blacklist (IP access rules)
+	 * risk_assessment_unblocked
+	 *
+	 * @param string $ipAddress
+	 */
+	public function remove_ip_from_blacklist(string $ipAddress)
+	{
+		$this->blacklist_purge($ipAddress);
+	}
+
+
+	/**
 	 * Set Cloudflare blacklist option
 	 *
 	 */
@@ -1216,11 +1242,11 @@ class cloudflare_extension extends \EarthAsylumConsulting\abstract_extension
 	{
 		if ($this->get_cloudflare_account())
 		{
-			$blacklist = $this->get_transient(self::TRANSIENT_BLACKLIST_LIST, function() use($verbose,$create)
+			$blacklist = $this->get_transient(self::TRANSIENT_BLACKLIST, function() use($verbose,$create)
 				{
 					return $this->get_blacklist_list($verbose,$create);
 				},
-				HOUR_IN_SECONDS // could/should be longer, but what if the CF list gets deleted?
+				self::TRANSIENT_BLACKLIST_TTL
 			);
 
 			if (!$blacklist) {
@@ -1333,7 +1359,7 @@ class cloudflare_extension extends \EarthAsylumConsulting\abstract_extension
 
 		// not found, not created, we're done
 		if (!$rule_id) {
-			$this->add_admin_notice('Cloudflare Rule: '.$result['errors'][0]['message'].'error');
+			$this->add_admin_notice('Cloudflare Rule: '.$result['errors'][0]['message'],'error');
 			return;
 		}
 
@@ -1376,31 +1402,44 @@ class cloudflare_extension extends \EarthAsylumConsulting\abstract_extension
 	 * purge old blacklisted IPs
 	 *
 	 */
-	public function blacklist_purge()
+	public function blacklist_purge(?string $ipAddress = null)
 	{
-		if (! ($time = (int)$this->get_option('cloudflare_blacklist_purge')) ) return;
-		$cutoffTimestamp = time() - $time;
+		$time = $this->get_option('cloudflare_blacklist_purge') ?: time();
+		$cutoffTimestamp = time() - (int)$time;
 
-		if ($list_id = $this->get_blacklist_id(false))
+		if ( ($cutoffTimestamp || $ipAddress) && ($list_id = $this->get_blacklist_id(false)) )
 		{
-			$list_url	= $this->cf_account_url . "/rules/lists";
+			$list_url		= $this->cf_account_url . "/rules/lists";
+			$page 			= 1;
+			$maxPages 		= 20;
+			$totalItems 	= 0;
+			$itemsToDelete 	= [];
 
-			// get existing blacklist items
-			$result = $this->cf_api_request('get',$list_url."/{$list_id}/items?per_page=500");
-			if (!$result['success']) return;
+			while ($page <= $maxPages)
+			{
+				$search 	= (!empty($ipAddress))
+					? "search={$ipAddress}" : 'per_page=500&page={$page}';
 
-			$items = $result['result'];
-			$total = count($items);
-			if ($total == 0) return;
+				$result = $this->cf_api_request('get',$list_url."/{$list_id}/items?{$search}");
+				if (!$result['success']) return;
 
-			$itemsToDelete = [];
-			foreach ($items as $item) {
-				if (isset($item['created_on'])) {
-					$created = strtotime($item['created_on']);
-					if ($created < $cutoffTimestamp) {
+				$items 		= $result['result'];
+				$count 		= count($items);
+				if ($count == 0) break;
+				$totalItems += $count;
+
+				foreach ($items as $item) {
+					if (!empty($ipAddress)) {
 						$itemsToDelete[] = ['id' => $item['id']];
+						$page = $maxPages;
+					} else {
+						$created = strtotime($item['created_on']);
+						if ($created < $cutoffTimestamp) {
+							$itemsToDelete[] = ['id' => $item['id']];
+						}
 					}
 				}
+				$page++;
 			}
 			$count = count($itemsToDelete);
 			if ($count == 0) return;
@@ -1412,12 +1451,19 @@ class cloudflare_extension extends \EarthAsylumConsulting\abstract_extension
 				]
 			);
 			if ($result['success']) {
-				$this->logNotice("Cloudflare Blacklist removed {$count} of {$total} IP addresses");
+				$this->logNotice("Cloudflare Blacklist removed {$count} of {$totalItems} IP addresses");
 			} else {
-				$this->logDebug($result,__METHOD__);
+				$this->logDebug([$result,$itemsToDelete],__METHOD__);
 			}
 		}
 	}
+
+
+	/**
+	 *
+	 * Cloudflare API
+	 *
+	 */
 
 
 	/**
@@ -1427,11 +1473,18 @@ class cloudflare_extension extends \EarthAsylumConsulting\abstract_extension
 	private function cf_api_request( string $method, string $url, array $args = [] )
 	{
 		$args['method'] 	= strtoupper($method);
-		$args['headers']	= [
-			'Accept'		=> 'application/json',
-			'X-Auth-Key'	=> $this->cloudflare_key,
-			'X-Auth-Email'	=> $this->cloudflare_email,
-		];
+		if ($this->cloudflare_token) {
+			$args['headers']	= [
+				'Accept'		=> 'application/json',
+				'Authorization' => "Bearer {$this->cloudflare_token}",
+			];
+		} else {
+			$args['headers']	= [
+				'Accept'		=> 'application/json',
+				'X-Auth-Key'	=> $this->cloudflare_key,
+				'X-Auth-Email'	=> $this->cloudflare_email,
+			];
+		}
 
 		if ($args['method'] != 'GET') {
 			$args['headers']['Content-Type'] = 'application/json';
@@ -1452,17 +1505,6 @@ class cloudflare_extension extends \EarthAsylumConsulting\abstract_extension
 			);
 		}
 
-        $status = (int)wp_remote_retrieve_response_code($result);
-        if ($status >= 300)
-        {
-            return $this->cloudflare_api_error(
-            		'http_status_'.$status,
-            		wp_remote_retrieve_response_message($result),
-            		$args['method'],
-            		$url
-            );
-        }
-
 		$result = json_decode( wp_remote_retrieve_body($result), true );
 
         if (json_last_error() !== JSON_ERROR_NONE)
@@ -1470,6 +1512,17 @@ class cloudflare_extension extends \EarthAsylumConsulting\abstract_extension
 			return $this->cloudflare_api_error(
 					'json_decode',
 					'Error decoding Cloudflare response',
+					$args['method'],
+					$url
+			);
+        }
+
+		$status = (int)wp_remote_retrieve_response_code($result);
+        if ($status >= 300 && !isset($result['success']))
+        {
+			return $this->cloudflare_api_error(
+					'http_status',
+					"{$status}: ".wp_remote_retrieve_response_message($result),
 					$args['method'],
 					$url
 			);
@@ -1500,8 +1553,10 @@ class cloudflare_extension extends \EarthAsylumConsulting\abstract_extension
 			return [
 				'success' 		=> false,
 				'errors'		=> [
-					'code'		=> $code,
-					'message'	=> $message,
+					[
+						'code'		=> $code,
+						'message'	=> $message,
+					]
 				]
 			];
 	}

@@ -2,11 +2,11 @@
 Plugin URI:         https://eacdoojigger.earthasylum.com/eaccloudflare/
 Author:             [EarthAsylum Consulting](https://www.earthasylum.com)
 Stable tag:         2.0.0
-Last Updated:       17-Oct-2026
+Last Updated:       22-Oct-2026
 Requires at least:  5.8
 Tested up to:       7.1
 Requires PHP:       8.1
-Requires EAC:       3.3
+Requires EAC:       3.3.2
 Contributors:       kevinburkholder
 Donate link:        https://github.com/sponsors/EarthAsylum
 Support link:		https://github.com/EarthAsylum/eacCloudflare/issues
@@ -15,24 +15,31 @@ License URI:        https://www.gnu.org/licenses/gpl.html
 Tags:               Cloudflare, rate-limit, blacklist, edge-caching, {eac}Doojigger
 GitHub URI:         https://github.com/EarthAsylum/eacCloudflare
 
-Provides limited control of Cloudflare settings, caching, blacklisting, and rate-limiting from WordPress.
+Provides control of several Cloudflare security and speed settings, intelligent caching management, short-term rate-limiting, and IP black-listing based on risk assessment from WordPress.
 
 == Description ==
 
-__Cloudflare Administration from WordPress__
+= Features =
 
-1. 	Pause/Resume Cloudflare service.
-2. 	Override the caching mode and browser cache time-to-live.
-3. 	Set the security level, including "Under Attack" mode.
-4. 	Set 'cf-edge-cache' header to trigger Cloudflare's WP-APO (Automatic Platform Optimization) or custom rules.
-5. 	Set common Cloudflare options for speed & security directly from WordPress.
-6. 	Automatically purge cloudflare cache (by host name).
-7. 	Add a rate limiting rule to temporarily block IP addresses after 100 requests within 10 seconds.
-8. 	Create and update Cloudflare IP blacklist (account) and blocking rule (zone) using risk assessment results.
++   Connects to Cloudflare using secure Account API Token.
++	Can pause (stop traffic from passing through Cloudflare) and resume the Cloudflare zone
++	Adjust the Cloudflare security level (low, medium, high, under attack).
++	Adjust Cloudflare's cache level, determine how much of your website’s content is cached.
++	Tags requested URLs for caching using cache-tags based on document (post) type and taxonomies.
++	Support edge caching with specific http headers and inteligent cache purging by using cache-tag(s).
++	Adjust cache time-to-live controlling how long cached resources remain valid.
++	Toggle several zone options effecting site speed and security.
++	Adds a rate limiting rule to temporarily block IP addresses due to excesive requests.
++	Creates a Cloudflare IP list and a security rule to block IP addresses added to the list.
++	Automatically adds IP addresses to the IP list based on {eac}Doojigger's security risk assessment.
++	Automatically purges the IP list of stale IP addresses.
+
 
 = Cloudflare Settings =
 
 With your Cloudflare account information, we can set certain common Cloudflare options as well as automatically purge the Cloudflare cache when purging the local WordPress caches, add a rate-limiting rule to mitigate brute-force and DDoS attacks, and blacklist IP addresses identified by Risk Assessment.
+
+> 	Cloudflare recommends using an *Account API Token* over *Account Email* and *Global API Key*. These fields are only present for currently configured users.
 
 __Account Email__
 
@@ -42,6 +49,59 @@ __Global API Key__
 
 Your Cloudflare global API key.
 From your Account Profile → API Tokens → API Keys → Global API Key
+
+> 	With version 2.0 of this plugin, *Account API Token* is preferred. Once entered, *Account Email* and *Global API Key* are removed.
+
+__Account API Token__
+
+Your Cloudflare Account API Token.
+From your Account Home → Manage account → Account API tokens → Create Token
+
+The token is encrypted when stored.
+
+When creating a new token, the simplest option is to select the "Full account and zone access" template. However, you can limit API access by selecting the "WordPress" template, or starting from scratch, and making some changes...
+
+Under "All zones in (your account)"...
+
++	DNS & Zones → DNS → (no access require).
++	DNS & Zones → Zone → [read] access.
++	DNS & Zones → Zone Custom Asset → [read & edit] access.
++	DNS & Zones → Zone Settings → [read & edit] access.
++	App Security → Zone WAF Rules → [read & edit] access.
++	Rules & Configuration → Config Settings → [read & edit] access.
++	Analytics & Logs → Zone Analytics → (no access require).
++	Cache & Performance → Cache → [purge] access.
++	Cache & Performance → Cache Settings → [read & edit] access.
+
+Under "Entire (your account) account"...
+
++	Rules & Configuration → Account Rule Lists → [read & edit] access.
++	Rules & Configuration → Account Rulesets → [read & edit] access.
++	Account & Billing → Account Settings → [read & edit] access.
+
+In the end, your *Token Summary* should look line...
+
+	All zones in (your account) Account
+		Zone Read
+		Zone Settings Read
+		Zone Settings Write
+		Cache Purge
+		Zone WAF Read
+		Zone WAF Write
+		Zone Custom Asset Read
+		Zone Custom Asset Write
+		Config Settings Read
+		Config Settings Write
+		Cache Settings Read
+		Cache Settings Write
+
+	Entire (your account) account
+		Account Settings Read
+		Account Settings Write
+		Account Rule Lists Read
+		Account Rule Lists Write
+		Account Rulesets Read
+		Account Rulesets Write
 
 __Domain Zone__
 
@@ -61,10 +121,6 @@ Cloudflare's security automatically protects your domain from malicious traffic.
 +	`High`: Challenges any visitor with even a low threat score, plus additional suspicious profiles..
 +	`Under Attack`: Performs additional security checks to help mitigate layer 7 DDoS attacks. Validated users access your website and suspicious traffic is blocked. It is designed to be used as one of the last resorts when a zone is under attack.
 
-__Browser Cache Time-To-Live__
-
-Controls how long resources cached by client browsers remain valid. (`Zone → Caching → Configuration`)
-
 __Caching Level__
 
 Caching levels determine how much of your website’s static content Cloudflare should cache.
@@ -77,42 +133,166 @@ Bypass: Cloudflare does not cache. (`Zone → Caching → Configuration`)
 
 __Edge Caching__
 
-Set cf-edge-cache & x-html-edge-cache http headers to support custom rules or Automatic Platform Optimization. Additionally, adds cache-control with appropriate values for optimal caching, and edge-cache-tag indicating the requested document type (based on WordPress conditionals or mime type). Custom rules can look for these headers (if set)...
+Support edge caching with specific http headers and inteligent cache purging by using cache tag(s).
+Set `cf-edge-cache` & `x-html-edge-cache` headers to support custom rules or Automatic Platform Optimization. Additionally, adds `cache-control` (using Browser Cache Time-To-Live), and `cache-tag` indicating the requested document type, id, and taxonomies.
 
+	cache-control: public,max-age=14400
 	cf-edge-cache: cache,platform=wordpress
-	x-html-edge-cache: "cache,bypass-cookies=wp-|wordpress|woocommerce"
-	edge-cache-tag: index,text/html
+	x-html-edge-cache: cache,bypass-cookies=wp-|wordpress|woocommerce
+	cache-tag: p-post,p-post-2829,p-category-3,p-tag-4,p-tag-72,text/html
+
+With cache tags, edge caching is managed by purging specific tag(s) on specific WordPress actions. For example, when a post is updated, the 'post_#' tag along with associated taxonomy tags are purged.
+
+__Browser Cache Time-To-Live__
+
+Controls how long resources cached by client browsers remain valid. (`Zone → Caching → Configuration`) and is used in cache-control headers to support Edge Caching.
 
 __Cloudflare Options__
 
 Enable/disable several common Cloudflare options for speed & security. (`Zone → Speed → Settings`), (`Zone → SSL/TLS → Edge Certificates`), (`Zone → Security → Settings`)
 
++	Brotli Compression
++	Rocket Loader
++	Early Hints
++	Always Use Https
++	Automatic Https Rewrites
++	Browser Integrity Check
++	Enable HTTP/3 (with QUIC)
++	0-RTT Connection Resumption
++	Email Obfuscation
++	Hotlink Protection
++	IP Geolocation
++	Development Mode
+
+>	The list of settings may vary depending on your Cloudflare plan and permissions.
+
 __Rate Limit Rule__
 
-Adds a rate limiting rule to temporarily block IP addresses after 100 requests within 10 seconds.
-Set to work with free plans but may overwrite existing rule. (`Zone → Security → Security rules`)
+Adds a rate limiting rule to temporarily block IP addresses after 500 requests within 10 seconds. Intended to work with free plans. See `CLOUDFLARE_TEMP_RATE_LIMIT` constant (below) to adjust. (`Zone → Security → Security rules`)
 
 __Risk Assessment Blacklist__
 
 When a request is blocked by the {eac}Doojigger Risk Assessment process, add the remote IP address to the Cloudflare blacklist to prevent further access to the site. This creates or updates a Cloudflare IP list (`Account → Configurations → Lists`) and adds a security rule (`Zone → Security → Security Rules`) to block the list.
+
 Note: To use an existing Cloudflare IP list, add `{eac}Cloudflare` to its description.
 
 __Blacklist Expiration__
 
 Controls how long an IP address is blacklisted due to Risk Assessment. The Cloudflare blacklist is purged hourly.
 
-= Filters and Actions =
+__Reset This IP Address__
+
+Remove from blacklist & reset risk tracking for this IP address.
+
+
+= Filters, Actions and Constants =
 
 __Filters__
 
-+	'cloudflare_purge_everything_actions' (array) - filter actions that trigger a cache purge.
-+	'cloudflare_use_cache' (bool) - override `cf-edge-cache` setting (cache/no-cache).
+	/**
+	 * Filter actions that trigger a cache purge.
+	 * @param array $actions Actions that trigger a full cache purge
+	 */
+	add_filter('cloudflare_purge_everything_actions',function($actions) {return $actions;});
+
+	/**
+	 * Filter actions that trigger a cache purge by cache tag(s).
+	 * @param array $actions Actions that trigger a post purge
+	 */
+	add_filter('cloudflare_purge_post_actions',function($actions) {return $actions;});
+
+	/**
+	 * Filter actions that trigger a cache purge by cache tag(s).
+	 * @param array $actions Actions that trigger a terms purge
+	 */
+	add_filter('cloudflare_purge_term_actions',function($actions) {return $actions;});
+
+	/**
+	 * Filter actions that trigger a cache purge by cache tag(s).
+	 * @param array $actions Actions that trigger a user (author) purge
+	 */
+	add_filter('cloudflare_purge_user_actions',function($actions) {return $actions;});
+
+	/**
+	 * Override cache setting
+	 * @param bool disable caching
+	 */
+	add_filter('cloudflare_use_cache', '__return_false');.
 
 __Actions__
 
-+	'eacDoojigger_cloudflare_pause'   - pause the cloudflare service
-+	'eacDoojigger_cloudflare_resume'  - resume the cloudflare service
-+	'eacDoojigger_cloudflare_purge'   - purge the cloudflare cache
+	/**
+	 * Pause the Cloudflare service
+	 */
+	do_action('cloudflare_pause');
+
+	/**
+	 * Resume the cloudflare service
+	 */
+	do_action('cloudflare_resume');
+
+	/**
+	 * Purge the cloudflare cache
+	 */
+	do_action('cloudflare_purge');
+
+	/**
+	 * Purge the cloudflare cache by cache-tag(s)
+	 * @param string type (page/post/category/tag/author)
+	 * @param int[] object id number(s)
+	 * @param object optional
+	 */
+	do_action('cloudflare_purge_tags',$type,$id,$object);
+
+
+__CONSTANTS__
+
+	/**
+	 * Set the Cloudflare Account API Token (disables input field)
+	 * @param string API Token
+	 */
+	define( 'CLOUDFLARE_API_TOKEN', 'cfat_xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx' );
+
+	/**
+	 * Override rate limit rule parameters (500 requests in 10 seconds)
+	 * @param int|array [
+	 * 		number of requests per period
+	 * 		period in seconds (limited to 10 for free plans)
+	 * ]
+	 */
+	define( 'CLOUDFLARE_TEMP_RATE_LIMIT', 1000 );		// 1,000 requests per 10 seconds
+	define( 'CLOUDFLARE_TEMP_RATE_LIMIT', [1000,60] );	// 1,000 requests per 60 seconds
+
+	/**
+	 * Override cache setting
+	 * @param bool disable caching
+	 */
+	define( 'CLOUDFLARE_USE_CACHE', FALSE );
+
+	/**
+	 * Change the default cache-cleaning method.
+	 * The default is invalidation (soft-purge) vs purging (hard-purge)
+	 * @param string method ('hard' | 'soft')
+	 */
+	define( 'CLOUDFLARE_CACHE_PURGE', 'hard' );
+
+	/**
+	 * Override the cache tag prefix (for multiple sub-domains in the same zone)
+	 * The default is 'siteN' for multi-site or the WP environment indicator (l|d|s|p)
+	 * @param string prefix
+	 */
+	define( 'CLOUDFLARE_CACHETAG_PREFIX', 'siteid' );
+
+	/**
+	 * Additional actions that trigger a cache purge.
+	 * @param array $actions Actions that trigger a full cache purge
+	 */
+	// after purging WP caches, purge cloudflare cache
+	define( 'CLOUDFLARE_PURGE_ACTIONS', ['eacDoojigger_after_flush_caches']);
+
+== Propagation ==
+
+Corresponding changes made directly from the Cloudflare Dashboard may take up to 1 hour to propagate to your website.
 
 
 == Installation ==
@@ -159,13 +339,13 @@ You should receive a copy of the GNU General Public License along with this prog
 
 == Changelog ==
 
-= Version 2.0.0 – October 17, 2026 =
+= Version 2.0.0 – October 22, 2026 =
 
 +	First release as a Doohickey (plugin).
 +	New Security Level with 'Under Attack'.
 +	New Caching Level drop-down.
 +	New Blacklisting for Risk Assessment.
 +	New default rate-limiting rule.
-+	Updated cache handling.
++	Enhanced edge-caching support.
 +	Updates settings retrieval (as a group vs individually).
 
