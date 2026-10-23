@@ -299,9 +299,11 @@ __CONSTANTS__
 	// after purging WP caches, purge cloudflare cache
 	define( 'CLOUDFLARE_PURGE_ACTIONS', ['eacDoojigger_after_flush_caches']);
 
-### Propagation
+### Important
 
 Corresponding changes made directly from the Cloudflare Dashboard may take up to 1 hour to propagate to your website.
+
+To prevent potential conflicts, use caution when using {eac}Cloudflare on multiple sub-domains within the same Cloudflare zone. In particular, set *Blacklist Expiration* on only one sub-domain, setting all others to *indefinite*.
 
 ### Download
 
