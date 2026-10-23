@@ -21,7 +21,7 @@ class cloudflare_extension extends \EarthAsylumConsulting\abstract_extension
 	/**
 	 * @var string extension version
 	 */
-	const VERSION			= '26.1022.1';
+	const VERSION			= '26.1023.1';
 
 	/**
 	 * @var string to set default tab name
@@ -35,9 +35,9 @@ class cloudflare_extension extends \EarthAsylumConsulting\abstract_extension
 	 *		array		override options for the 'Enabled' option (label,help,title,info, etc.)
 	 */
 	const ENABLE_OPTION		= [
-		'label'		=>	"<abbr title='With your Cloudflare account information, ".
-						"we can set certain common Cloudflare options as well as automatically purge the Cloudflare ".
-						"cache when purging the local WordPress caches, ".
+		'label'		=>	"<abbr title='With your Cloudflare account information, we can ".
+						"set common Cloudflare <em>speed &amp; security</em> options as well as ".
+						"automatically purge the Cloudflare cache on specific WordPress actions, ".
 						"add a rate-limiting rule to mitigate brute-force and DDoS attacks, ".
 						"and blacklist IP addresses identified by Risk Assessment.'>Cloudflare</abbr>",
 	];

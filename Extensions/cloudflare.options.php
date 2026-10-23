@@ -8,11 +8,11 @@
 * @see https://developers.cloudflare.com/automatic-platform-optimization/
 * @see https://blog.cloudflare.com/building-automatic-platform-optimization-for-wordpress-using-cloudflare-workers/
 *
-* @category	WordPress Plugin
+* @category		WordPress Plugin
 * @package		{eac}Doojigger\Extensions
 * @author		Kevin Burkholder <KBurkholder@EarthAsylum.com>
 * @copyright	Copyright (c) 2026 EarthAsylum Consulting <www.EarthAsylum.com>
-* @version 		26.1022.1
+* @version 		26.1023.1
 */
 
 defined( 'ABSPATH' ) or exit;

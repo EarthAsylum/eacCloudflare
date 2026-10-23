@@ -9,7 +9,7 @@
 Plugin URI:         https://eacdoojigger.earthasylum.com/eaccloudflare/  
 Author:             [EarthAsylum Consulting](https://www.earthasylum.com)  
 Stable tag:         2.0.0  
-Last Updated:       22-Oct-2026  
+Last Updated:       23-Oct-2026  
 Requires at least:  5.8  
 Tested up to:       7.1  
 Requires PHP:       8.1  
@@ -45,8 +45,6 @@ GitHub URI:         https://github.com/EarthAsylum/eacCloudflare
 
 
 #### Cloudflare Settings
-
-With your Cloudflare account information, we can set certain common Cloudflare options as well as automatically purge the Cloudflare cache when purging the local WordPress caches, add a rate-limiting rule to mitigate brute-force and DDoS attacks, and blacklist IP addresses identified by Risk Assessment.
 
 > 	Cloudflare recommends using an *Account API Token* over *Account Email* and *Global API Key*. These fields are only present for currently configured users.
 
@@ -253,7 +251,6 @@ __Actions__
 	 */
 	do_action('cloudflare_purge_tags',$type,$id,$object);
 
-
 __CONSTANTS__
 
 	/**
@@ -298,6 +295,7 @@ __CONSTANTS__
 	 */
 	// after purging WP caches, purge cloudflare cache
 	define( 'CLOUDFLARE_PURGE_ACTIONS', ['eacDoojigger_after_flush_caches']);
+
 
 ### Important
 
