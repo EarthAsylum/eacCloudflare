@@ -1410,18 +1410,22 @@ class cloudflare_extension extends \EarthAsylumConsulting\abstract_extension
 		if ( ($cutoffTimestamp || $ipAddress) && ($list_id = $this->get_blacklist_id(false)) )
 		{
 			$list_url		= $this->cf_account_url . "/rules/lists";
-			$page 			= 1;
-			$maxPages 		= 20;
+			$cursor 		= true;
 			$totalItems 	= 0;
 			$itemsToDelete 	= [];
 
-			while ($page <= $maxPages)
+			while ($cursor)
 			{
 				$search 	= (!empty($ipAddress))
-					? "search={$ipAddress}" : 'per_page=500&page={$page}';
+					? "search={$ipAddress}" : 'per_page=100';
+				if (is_string($cursor)) $search .= "&cursor={$cursor}";
 
 				$result = $this->cf_api_request('get',$list_url."/{$list_id}/items?{$search}");
 				if (!$result['success']) return;
+
+				$cursor = (isset($result['result_info'],$result['result_info']['cursors']))
+					? $result['result_info']['cursors']['after'] ?? false
+					: false;
 
 				$items 		= $result['result'];
 				$count 		= count($items);
@@ -1431,7 +1435,6 @@ class cloudflare_extension extends \EarthAsylumConsulting\abstract_extension
 				foreach ($items as $item) {
 					if (!empty($ipAddress)) {
 						$itemsToDelete[] = ['id' => $item['id']];
-						$page = $maxPages;
 					} else {
 						$created = strtotime($item['created_on']);
 						if ($created < $cutoffTimestamp) {
@@ -1439,7 +1442,6 @@ class cloudflare_extension extends \EarthAsylumConsulting\abstract_extension
 						}
 					}
 				}
-				$page++;
 			}
 			$count = count($itemsToDelete);
 			if ($count == 0) return;
@@ -1453,7 +1455,7 @@ class cloudflare_extension extends \EarthAsylumConsulting\abstract_extension
 			if ($result['success']) {
 				$this->logNotice("Cloudflare Blacklist removed {$count} of {$totalItems} IP addresses");
 			} else {
-				$this->logDebug([$result,$itemsToDelete],__METHOD__);
+				$this->logDebug($result,__METHOD__);
 			}
 		}
 	}
