@@ -280,7 +280,7 @@ if ($this->is_option('cloudflare_zone'))
 				'type'		=>	'select',
 				'label'		=>	'Blacklist Expiration',
 				'options'	=> [
-					'Indefinite'	=> 0,
+					'Undefined'		=> 0,
 					'1 Hour'		=> HOUR_IN_SECONDS,
 					'4 Hours'		=> 4*HOUR_IN_SECONDS,
 					'8 Hours'		=> 8*HOUR_IN_SECONDS,

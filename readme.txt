@@ -290,9 +290,12 @@ __CONSTANTS__
 
 == Important ==
 
-Corresponding changes made directly from the Cloudflare Dashboard may take up to 1 hour to propagate to your website.
++	Corresponding changes made directly from the Cloudflare Dashboard may take up to 1 hour to propagate to your website.
 
-To prevent potential conflicts, use caution when using {eac}Cloudflare on multiple sub-domains within the same Cloudflare zone. In particular, set *Blacklist Expiration* on only one sub-domain, setting all others to *indefinite*.
++	To prevent potential conflicts and confusion, use caution when using {eac}Cloudflare on multiple sub-domains within the same Cloudflare zone.
+
++	When using `Risk Assessment Blacklist`, since the IP block list is set at the account level, only one site/domain should set `Blacklist Expiration`, this site will run a purge of the list every hour. Other sites should be set to *Undefined*.
+
 
 == Download ==
 
