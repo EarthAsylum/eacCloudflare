@@ -294,10 +294,18 @@ __CONSTANTS__
 
 Corresponding changes made directly from the Cloudflare Dashboard may take up to 1 hour to propagate to your website.
 
+== Download ==
+
+📦 Download the **[{eac}Cloudflare Plugin](https://eacdoojigger.earthasylum.com/software-updates/eaccloudflare.zip)**
+
+📦 Download the **[{eac}Doojigger Plugin](https://eacdoojigger.earthasylum.com/software-updates/eacdoojigger.zip)**
+
+Your [♡ Sponsorship](https://github.com/sponsors/EarthAsylum) is greatly appreciated!
+
 
 == Installation ==
 
-**{eac}Doojigger Cloudflare Doololly** is an extension plugin to and requires installation and registration of [{eac}Doojigger](https://eacDoojigger.earthasylum.com/).
+**{eac}Doojigger Cloudflare Doololly** is an extension plugin to and requires installation and registration of [{eac}Doojigger](https://eacDoojigger.earthasylum.com/eacdoojigger).
 
 = Automatic Plugin Installation =
 
