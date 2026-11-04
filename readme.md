@@ -8,8 +8,8 @@
 
 Plugin URI:         https://eacdoojigger.earthasylum.com/eaccloudflare/  
 Author:             [EarthAsylum Consulting](https://www.earthasylum.com)  
-Stable tag:         2.0.0  
-Last Updated:       23-Oct-2026  
+Stable tag:         2.0.1  
+Last Updated:       03-Nov-2026  
 Requires at least:  5.8  
 Tested up to:       7.1  
 Requires PHP:       8.1  

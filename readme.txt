@@ -1,8 +1,8 @@
 === {eac}Doojigger Cloudflare Doololly for WordPress ===
 Plugin URI:         https://eacdoojigger.earthasylum.com/eaccloudflare/
 Author:             [EarthAsylum Consulting](https://www.earthasylum.com)
-Stable tag:         2.0.0
-Last Updated:       23-Oct-2026
+Stable tag:         2.0.1
+Last Updated:       03-Nov-2026
 Requires at least:  5.8
 Tested up to:       7.1
 Requires PHP:       8.1
@@ -349,6 +349,11 @@ You should receive a copy of the GNU General Public License along with this prog
 
 
 == Changelog ==
+
+= Version 2.0.1 – November 3, 2026 =
+
++	(10040) you have been ratelimited please wait and try again
+	+	 Obey 'retry-after' header on 429 status (rate limit).
 
 = Version 2.0.0 – October 23, 2026 =
 

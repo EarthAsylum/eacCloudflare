@@ -21,7 +21,7 @@ class cloudflare_extension extends \EarthAsylumConsulting\abstract_extension
 	/**
 	 * @var string extension version
 	 */
-	const VERSION			= '26.1023.1';
+	const VERSION			= '26.1103.1';
 
 	/**
 	 * @var string to set default tab name
@@ -1162,6 +1162,8 @@ class cloudflare_extension extends \EarthAsylumConsulting\abstract_extension
 
 		if ($list_id = $this->get_blacklist_id(false))
 		{
+			if ($this->isRateLimit()) return;
+
 			$list_url = $this->cf_account_url . "/rules/lists";
 
 			// add IP addres to blacklist
@@ -1497,6 +1499,9 @@ class cloudflare_extension extends \EarthAsylumConsulting\abstract_extension
 
 		$result = wp_remote_request($url, $args);
 
+		$status = (int)wp_remote_retrieve_response_code($result);
+		if ($status == 429) $this->isRateLimit($result);
+
 		if (is_wp_error($result))
 		{
 			return $this->cloudflare_api_error(
@@ -1507,6 +1512,7 @@ class cloudflare_extension extends \EarthAsylumConsulting\abstract_extension
 			);
 		}
 
+		$message = wp_remote_retrieve_response_message($result);
 		$result = json_decode( wp_remote_retrieve_body($result), true );
 
         if (json_last_error() !== JSON_ERROR_NONE)
@@ -1519,12 +1525,11 @@ class cloudflare_extension extends \EarthAsylumConsulting\abstract_extension
 			);
         }
 
-		$status = (int)wp_remote_retrieve_response_code($result);
         if ($status >= 300 && !isset($result['success']))
         {
 			return $this->cloudflare_api_error(
 					'http_status',
-					"{$status}: ".wp_remote_retrieve_response_message($result),
+					"{$status}: ".$message,
 					$args['method'],
 					$url
 			);
@@ -1540,27 +1545,47 @@ class cloudflare_extension extends \EarthAsylumConsulting\abstract_extension
 	 */
 	private function cloudflare_api_error( string $code, string $message, string $method, string $url ): array
 	{
-			$url = str_replace(
-				[
-					$this->cloudflare_account['id'] ?? '{account}' ,
-					$this->cloudflare_zone ?: '{zone}'
-				],[
-					'{account}',
-					'{zone}'
-				],
-				$url
-			);
-			$this->logError(["({$code}) {$message}","{$method} {$url}"],__FUNCTION__);
+		$url = str_replace(
+			[
+				$this->cloudflare_account['id'] ?? '{account}' ,
+				$this->cloudflare_zone ?: '{zone}'
+			],[
+				'{account}',
+				'{zone}'
+			],
+			$url
+		);
+		$this->logError(["({$code}) {$message}","{$method} {$url}"],__FUNCTION__);
 
-			return [
-				'success' 		=> false,
-				'errors'		=> [
-					[
-						'code'		=> $code,
-						'message'	=> $message,
-					]
+		return [
+			'success' 		=> false,
+			'errors'		=> [
+				[
+					'code'		=> $code,
+					'message'	=> $message,
 				]
-			];
+			]
+		];
+	}
+
+
+	/**
+	 * Cloudflare API rate limit
+	 *
+	 */
+	private function isRateLimit( $result = null ): bool
+	{
+		$transientId = 'cf_rate_limit_'.$this->cloudflare_account['id'];
+
+		if ($result)
+		{
+			$retry = (int)wp_remote_retrieve_header($result,'Retry-After');
+			return (bool)$this->set_site_transient($transientId,true,max(60,$retry));
+		}
+		else
+		{
+			return (bool)$this->get_site_transient($transientId);
+		}
 	}
 }
 /**
