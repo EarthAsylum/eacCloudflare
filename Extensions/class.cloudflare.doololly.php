@@ -21,7 +21,7 @@ class cloudflare_extension extends \EarthAsylumConsulting\abstract_extension
 	/**
 	 * @var string extension version
 	 */
-	const VERSION			= '26.1103.1';
+	const VERSION			= '26.1106.1';
 
 	/**
 	 * @var string to set default tab name
@@ -148,6 +148,11 @@ class cloudflare_extension extends \EarthAsylumConsulting\abstract_extension
 	const BLACK_LIST_NAME			= 'risk_assessment_blacklist';
 	const BLACK_LIST_DESC			= '{eac}Cloudflare - Block IP addresses identified by Risk Assessment';
 	private $black_list_name		= self::BLACK_LIST_NAME;
+
+	/**
+	 * @var string cache rule description
+	 */
+	const CACHE_RULE_DESC 			= '{eac}Cloudflare - Default Cache Rule';
 
 	/**
 	 * @var string ratelimit rule description
@@ -726,7 +731,7 @@ class cloudflare_extension extends \EarthAsylumConsulting\abstract_extension
 		if (defined('CLOUDFLARE_USE_CACHE') && ! CLOUDFLARE_USE_CACHE) {
 			return false;
 		}
-		if ($_SERVER['REQUEST_METHOD'] != 'GET') {
+		if (!in_array($_SERVER['REQUEST_METHOD'],['GET','HEAD'])) {
 			return false;
 		}
 		if (http_response_code() != 200) {
@@ -1037,6 +1042,104 @@ class cloudflare_extension extends \EarthAsylumConsulting\abstract_extension
 
 	/**
 	 *
+	 * Handle cache rule
+	 *
+	 */
+
+
+	/**
+	 * Get cache rule
+	 *
+	 */
+	public function get_cache_rule()
+	{
+		$result = $this->cf_api_request('get',$this->cf_zone_url . "/rulesets/phases/http_request_cache_settings/entrypoint");
+
+		if ($result['success'] && isset($result['result']['rules']))
+		{
+			foreach ($result['result']['rules'] as $rule) {
+				if ($rule['description'] == self::CACHE_RULE_DESC) {
+					return $rule;
+				}
+			}
+		//	return true;
+		}
+		return false;
+	}
+
+
+	/**
+	 * Set rate limit rule option
+	 *
+	 */
+	public function set_cache_rule($value, $fieldName, $metaData, $priorValue)
+	{
+		if ($value == 'Add Rule')
+		{
+			if ($this->get_cache_rule()) {
+				$this->add_admin_notice("Cloudflare Cache Rule: existing rule found.",'success');
+				return $value;
+			}
+
+			$rule = [
+				[
+					'description' => self::CACHE_RULE_DESC,
+					'expression' => '(http.request.method in {"GET" "HEAD"} and '.
+									'not any(http.request.headers["cache-control"][*] contains "no-cache"))',
+					'action' => 'set_cache_settings',
+					'action_parameters' => [
+						'cache' => true,
+						'edge_ttl' => [
+							'mode' => 'bypass_by_default', // Use cache control-header if present, bypass cache if not.
+						],
+					],
+					'enabled' => true
+				]
+			];
+
+			$result = $this->cf_api_request('put',$this->cf_zone_url . "/rulesets/phases/http_request_cache_settings/entrypoint",
+				[
+					'body' => ['rules' => $rule],
+				]
+			);
+
+			if ($result['success']) {
+				$this->add_admin_notice("Cloudflare Cache Rule: <em>".self::CACHE_RULE_DESC.'</em> created.','success');
+			} else {
+				$this->add_admin_notice('Cloudflare Cache Rule: '.$result['errors'][0]['message'],'error');
+			}
+			return $value;
+		}
+		else if ($value == 'Delete Rule')
+		{
+			$result = $this->cf_api_request('get',$this->cf_zone_url . "/rulesets/phases/http_request_cache_settings/entrypoint");
+
+			if ($result['success'] && isset($result['result']['rules']))
+			{
+				foreach ($result['result']['rules'] as $ix => $rule) {
+					if ($rule['description'] == self::CACHE_RULE_DESC) {
+						unset($result['result']['rules'][$ix]);
+						$result = $this->cf_api_request('put',$this->cf_zone_url . "/rulesets/phases/http_request_cache_settings/entrypoint",
+							[
+								'body' => ['rules'=>$result['result']['rules']],
+							]
+						);
+						if ($result['success']) {
+							$this->add_admin_notice("Cloudflare Cache Rule: <em>".self::CACHE_RULE_DESC.'</em> removed.','success');
+						} else {
+							$this->add_admin_notice('Cloudflare Cache Rule: '.$result['errors'][0]['message'],'error');
+						}
+						return $value;
+					}
+				}
+			}
+			$this->add_admin_notice("Cloudflare Cache Rule: <em>".self::CACHE_RULE_DESC.'</em> not found.','warning');
+		}
+	}
+
+
+	/**
+	 *
 	 * Handle Rate Limiting
 	 *
 	 */
@@ -1162,7 +1265,12 @@ class cloudflare_extension extends \EarthAsylumConsulting\abstract_extension
 
 		if ($list_id = $this->get_blacklist_id(false))
 		{
-			if ($this->isRateLimit()) return;
+			if ($this->isRateLimit()) {
+				$this->logNotice('Paused due to rate limit','Cloudflare blacklist');
+				return;
+			}
+
+			if ($this->isBlackListed($ipAddress)) return;
 
 			$list_url = $this->cf_account_url . "/rules/lists";
 
@@ -1204,6 +1312,7 @@ class cloudflare_extension extends \EarthAsylumConsulting\abstract_extension
 					$list_url
 				);
 			} else {
+				$this->isBlackListed($ipAddress,true);
 				$this->logNotice(trim($comment,' ;'),'Cloudflare blacklist');
 			}
 		}
@@ -1570,17 +1679,36 @@ class cloudflare_extension extends \EarthAsylumConsulting\abstract_extension
 
 
 	/**
+	 * Cloudflare API black listed
+	 *
+	 */
+	private function isBlackListed( $ipAddress, $set = false ): bool
+	{
+		$transientId = 'cf_blacklist_'.sanitize_key(str_replace(['.',':'],'-',$ipAddress));
+
+		if ($set)
+		{
+			return (bool)$this->set_site_transient($transientId,true,HOUR_IN_SECONDS);
+		}
+		else
+		{
+			return (bool)$this->get_site_transient($transientId);
+		}
+	}
+
+
+	/**
 	 * Cloudflare API rate limit
 	 *
 	 */
 	private function isRateLimit( $result = null ): bool
 	{
-		$transientId = 'cf_rate_limit_'.$this->cloudflare_account['id'];
+		$transientId = 'cf_ratelimit_'.$this->cloudflare_account['id'];
 
 		if ($result)
 		{
 			$retry = (int)wp_remote_retrieve_header($result,'Retry-After');
-			return (bool)$this->set_site_transient($transientId,true,max(60,$retry));
+			return (bool)$this->set_site_transient($transientId,true,max(60,$retry)+1);
 		}
 		else
 		{

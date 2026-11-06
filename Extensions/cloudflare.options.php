@@ -12,7 +12,7 @@
 * @package		{eac}Doojigger\Extensions
 * @author		Kevin Burkholder <KBurkholder@EarthAsylum.com>
 * @copyright	Copyright (c) 2026 EarthAsylum Consulting <www.EarthAsylum.com>
-* @version 		26.1023.1
+* @version 		26.1106.1
 */
 
 defined( 'ABSPATH' ) or exit;
@@ -92,6 +92,12 @@ if ($this->is_option('cloudflare_zone'))
 	} else {
 		$this->cloudflare_status = $this->get_zone_status();
 		$isPaused = ($this->cloudflare_status['paused']) ? 'Resume' : 'Pause';
+	}
+
+	if (isset($_POST['_cloudflare_cacherule'])) {
+		$isCache = ($_POST['_cloudflare_cacherule'] == 'Add Rule') ? 'Delete' : 'Add';
+	} else {
+		$isCache = ($this->get_cache_rule()) ? 'Delete' : 'Add';
 	}
 
 	if (isset($_POST['_cloudflare_ratelimit'])) {
@@ -196,6 +202,15 @@ if ($this->is_option('cloudflare_zone'))
 								'cache-tag: p-post,p-post-2829,p-category-3,p-tag-4,p-tag-72,text/html'.
 								'</small><br>'.
 								'With cache tags, edge caching is managed by purging specific tag(s) on specific WordPress actions.',
+		),
+		'_cloudflare_cacherule'=> array(
+				'type'		=>	'button',
+				'label'		=>	"Edge Cache Rule",
+				'default'	=>	$isCache.' Rule',
+				'info'		=>	"Adds a cache rule to allow (make eligible) edge caching of origin requests with a cache-control header.".
+								"<br><small>(Use cache control-header if present, bypass cache if not)</small>",
+				'help'		=>	'[info]<br><small>Zone &rarr; Caching &rarr; Cache Rules</small>',
+				'validate'	=>	[$this,'set_cache_rule'],
 		),
 		'cloudflare_cachettl'=> array(
 				'type'		=>	'select',

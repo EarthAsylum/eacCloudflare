@@ -8,8 +8,8 @@
 
 Plugin URI:         https://eacdoojigger.earthasylum.com/eaccloudflare/  
 Author:             [EarthAsylum Consulting](https://www.earthasylum.com)  
-Stable tag:         2.0.1  
-Last Updated:       03-Nov-2026  
+Stable tag:         2.0.2  
+Last Updated:       06-Nov-2026  
 Requires at least:  5.8  
 Tested up to:       7.1  
 Requires PHP:       8.1  
@@ -31,17 +31,20 @@ GitHub URI:         https://github.com/EarthAsylum/eacCloudflare
 #### Features
 
 +   Connects to Cloudflare using secure Account API Token.
-+	Can pause (stop traffic from passing through Cloudflare) and resume the Cloudflare zone
++	Pause (stop traffic from passing through Cloudflare) and resume the Cloudflare zone.
 +	Adjust the Cloudflare security level (low, medium, high, under attack).
 +	Adjust Cloudflare's cache level, determine how much of your website’s content is cached.
 +	Tags requested URLs for caching using cache-tags based on document (post) type and taxonomies.
 +	Support edge caching with specific http headers and inteligent cache purging by using cache-tag(s).
++	Add a cache rule to allow (make eligible) edge caching of origin requests with a cache-control header.
 +	Adjust cache time-to-live controlling how long cached resources remain valid.
 +	Toggle several zone options effecting site speed and security.
 +	Adds a rate limiting rule to temporarily block IP addresses due to excesive requests.
 +	Creates a Cloudflare IP list and a security rule to block IP addresses added to the list.
 +	Automatically adds IP addresses to the IP list based on {eac}Doojigger's security risk assessment.
 +	Automatically purges the IP list of stale IP addresses.
+
++   Fully functional with Cloudflare free plans.
 
 
 #### Cloudflare Settings
@@ -149,6 +152,11 @@ Set `cf-edge-cache` & `x-html-edge-cache` headers to support custom rules or Aut
 	cache-tag: p-post,p-post-2829,p-category-3,p-tag-4,p-tag-72,text/html
 
 With cache tags, edge caching is managed by purging specific tag(s) on specific WordPress actions. For example, when a post is updated, the 'post_#' tag along with associated taxonomy tags are purged.
+
+__Edge Cache Rule__
+
+Adds a cache rule to allow (make eligible) edge caching of origin requests with a cache-control header.
+(Use cache control-header if present, bypass cache if not), allows pages to be cached based on the `cache-control` header both coming from the browser and returned by the server. (`Zone → Caching → Cache Rules`)
 
 __Browser Cache Time-To-Live__
 
