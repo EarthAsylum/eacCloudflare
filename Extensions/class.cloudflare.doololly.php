@@ -15,13 +15,14 @@ namespace EarthAsylumConsulting\Extensions;
  * @author		Kevin Burkholder <KBurkholder@EarthAsylum.com>
  * @copyright	Copyright (c) 2026 EarthAsylum Consulting <www.EarthAsylum.com>
  */
+defined( 'ABSPATH' ) or exit;
 
 class cloudflare_extension extends \EarthAsylumConsulting\abstract_extension
 {
 	/**
 	 * @var string extension version
 	 */
-	const VERSION			= '26.1106.1';
+	const VERSION			= '26.1117.1';
 
 	/**
 	 * @var string to set default tab name
@@ -555,6 +556,7 @@ class cloudflare_extension extends \EarthAsylumConsulting\abstract_extension
 			$settings 	= $this->get_cf_settings();
 			$options 	= [];
 
+			// phpcs:disable WordPress.Security.NonceVerification.Missing
 			foreach(self::CLOUDFLARE_OPTIONS as $name => $id)
 			{
 				if ($withPost && isset($_POST['_cloudflare_options'])) {
@@ -565,6 +567,7 @@ class cloudflare_extension extends \EarthAsylumConsulting\abstract_extension
 				}
 				if ($value) $options[$id] = $value;
 			}
+			// phpcs:enable WordPress.Security.NonceVerification.Missing
 
 			return $options;
 		}
@@ -731,7 +734,7 @@ class cloudflare_extension extends \EarthAsylumConsulting\abstract_extension
 		if (defined('CLOUDFLARE_USE_CACHE') && ! CLOUDFLARE_USE_CACHE) {
 			return false;
 		}
-		if (!in_array($_SERVER['REQUEST_METHOD'],['GET','HEAD'])) {
+		if (!in_array(getenv('REQUEST_METHOD'),['GET','HEAD'])) {
 			return false;
 		}
 		if (http_response_code() != 200) {
@@ -896,7 +899,7 @@ class cloudflare_extension extends \EarthAsylumConsulting\abstract_extension
 				'xml'		=> 'text/xml',
 				'rss'		=> 'application/rss+xml',
 			]);
-			$type = wp_check_filetype($_SERVER['REQUEST_URI'],$mime_types);
+			$type = wp_check_filetype(wp_unslash(getenv('REQUEST_URI')),$mime_types);
 			$cacheTags[] = ($type['type']) ? $type['type'] : get_option( 'html_type' );
 		} else {
 			$cacheTags[] = get_option( 'html_type' );
@@ -930,7 +933,7 @@ class cloudflare_extension extends \EarthAsylumConsulting\abstract_extension
 
 		if ($this->get_cloudflare_auth() && $this->cf_zone_url)
 		{
-			$site_url = parse_url( get_site_url() );
+			$site_url = wp_parse_url( get_site_url() );
 			$site_url = trailingslashit($site_url['host'] . ($site_url['path'] ?? '')).'*';
 
 			$result = $this->cf_api_request('post',$this->cf_zone_url . $method,
@@ -1293,6 +1296,9 @@ class cloudflare_extension extends \EarthAsylumConsulting\abstract_extension
 			$location = $data['Region'] ?: $data['City'];
 			if ($location) {
 				$comment .= "; [".trim($location.' '.$data['CountryCode'])."]";
+			} else
+			if ($data['CountryCode']) {
+				$comment .= "; [".$data['CountryCode']."]";
 			}
 
 			$result = $this->cf_api_request('post',$list_url."/{$list_id}/items",

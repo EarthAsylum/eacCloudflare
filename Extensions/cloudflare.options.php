@@ -12,10 +12,15 @@
 * @package		{eac}Doojigger\Extensions
 * @author		Kevin Burkholder <KBurkholder@EarthAsylum.com>
 * @copyright	Copyright (c) 2026 EarthAsylum Consulting <www.EarthAsylum.com>
-* @version 		26.1106.1
+* @version 		26.1117.1
 */
 
 defined( 'ABSPATH' ) or exit;
+
+// phpcs:disable WordPress.Security.NonceVerification.Missing
+// - included and used within the class object as only part of the form processing.
+// phpcs:disable WordPress.NamingConventions.PrefixAllGlobals.NonPrefixedVariableFound
+// - included and used within the class object and not stand-alone or in the global scope.
 
 $this->registerExtensionOptions( $this->className,
 	[
@@ -44,6 +49,10 @@ $this->registerExtensionOptions( $this->className,
 								? '<br>When saved, this token will replace email and global api key.' : '',
 				'encrypt' 	=> 	true,
 				'style'		=> 	'-webkit-text-security:disc;',
+				'validate'	=>	function($v){
+						$this->add_action( "options_form_post", function(){$this->page_reload();} );
+						return $v;
+				},
 		),
 	]
 );
@@ -58,6 +67,10 @@ if ($this->get_cloudflare_auth())
 				'options'	=>	$this->get_zone_list(),
 				'info'		=>	'Your Cloudflare zone for this domain.',
 				'style'		=> 	'min-width:22ch;',
+				'validate'	=>	function($v){
+						$this->add_action( "options_form_post", function(){$this->page_reload();} );
+						return $v;
+				},
 		),
 	],
 	);
@@ -78,14 +91,15 @@ $this->registerExtensionOptions( $this->className,
 		'_cloudflare_link'	=> array(
 				'type'		=>	'display',
 				'label'		=>	'Your Dashboard',
-		//		'info'		=>	'For full access to and management of your domain(s).',
+				// phpcs:ignore PluginCheck.CodeAnalysis.Offloading.OffloadedContent
 				'default'	=>	"&rarr; <a href='https://dash.cloudflare.com/' target='_blank'>Log in to your Cloudflare Dashboard</a><br>".
+				// phpcs:ignore PluginCheck.CodeAnalysis.Offloading.OffloadedContent
 								"&rarr; <a href='https://www.support.cloudflare.com/' target='_blank'>Visit the Cloudflare Help Center</a>",
 				'style'		=> 	'line-height:2',
 		),
 	]
 );
-if ($this->is_option('cloudflare_zone'))
+if ($this->is_option('cloudflare_zone') && $this->get_cloudflare_auth())
 {
 	if (isset($_POST['_cloudflare_pause'])) {
 		$isPaused = ($_POST['_cloudflare_pause'] == 'Pause') ? 'Resume' : 'Pause';
@@ -325,3 +339,6 @@ if ($this->is_option('cloudflare_zone'))
 		]);
 	}
 }
+
+// phpcs:enable WordPress.Security.NonceVerification.Missing
+// phpcs:enable WordPress.NamingConventions.PrefixAllGlobals.NonPrefixedVariableFound

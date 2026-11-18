@@ -1,4 +1,4 @@
-## {eac}Doojigger Cloudflare Doololly for WordPress
+## {eac}Cloudflare
 [![EarthAsylum Consulting](https://img.shields.io/badge/EarthAsylum-Consulting-0?&labelColor=6e9882&color=707070)](https://earthasylum.com/)
 [![WordPress](https://img.shields.io/badge/WordPress-Plugins-grey?logo=wordpress&labelColor=blue)](https://wordpress.org/plugins/search/EarthAsylum/)
 [![eacDoojigger](https://img.shields.io/badge/Requires-%7Beac%7DDoojigger-da821d)](https://eacDoojigger.earthasylum.com/)
@@ -8,9 +8,9 @@
 
 Plugin URI:         https://eacdoojigger.earthasylum.com/eaccloudflare/  
 Author:             [EarthAsylum Consulting](https://www.earthasylum.com)  
-Stable tag:         2.0.2  
-Last Updated:       06-Nov-2026  
-Requires at least:  5.8  
+Stable tag:         2.0.3  
+Last Updated:       17-Nov-2026  
+Requires at least:  5.9  
 Tested up to:       7.1  
 Requires PHP:       8.1  
 Requires EAC:       3.3.2  
@@ -24,7 +24,7 @@ GitHub URI:         https://github.com/EarthAsylum/eacCloudflare
 
 </details>
 
-> Provides control of several Cloudflare security and speed settings, intelligent caching management, short-term rate-limiting, and IP black-listing based on risk assessment from WordPress.
+> Manage Cloudflare security and speed settings, smart caching, short-term rate limiting, and risk-based blacklisting from a single control point.
 
 ### Description
 

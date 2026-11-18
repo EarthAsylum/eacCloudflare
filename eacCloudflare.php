@@ -13,10 +13,9 @@ namespace EarthAsylumConsulting;
  *
  * @wordpress-plugin
  * Plugin Name:			{eac}Cloudflare
- * Description:			{eac}Cloudflare Provides control of several Cloudflare security and speed settings, intelligent caching management, short-term rate-limiting, and IP black-listing based on risk assessment from WordPress.
- * Version:				2.0.2
- * Requires at least:	5.8
- * Tested up to:		7.1
+ * Description:			Manage Cloudflare security and speed settings, smart caching, short-term rate limiting, and risk-based blacklisting from a single control point.
+ * Version:				2.0.3
+ * Requires at least:	5.9
  * Requires PHP:		8.1
  * Plugin URI:          https://eacdoojigger.earthasylum.com/eaccloudflare/
  * Update URI: 			https://eacdoojigger.earthasylum.com/software-updates/eaccloudflare.json
@@ -25,6 +24,7 @@ namespace EarthAsylumConsulting;
  * License: 			GPLv3 or later
  * License URI: 		https://www.gnu.org/licenses/gpl.html
  */
+defined( 'ABSPATH' ) or exit;
 
 if (!defined( 'EACDOOJIGGER_VERSION' ) )
 {
