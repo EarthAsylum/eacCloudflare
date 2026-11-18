@@ -734,7 +734,7 @@ class cloudflare_extension extends \EarthAsylumConsulting\abstract_extension
 		if (defined('CLOUDFLARE_USE_CACHE') && ! CLOUDFLARE_USE_CACHE) {
 			return false;
 		}
-		if (!in_array(getenv('REQUEST_METHOD'),['GET','HEAD'])) {
+		if (!in_array($_SERVER['REQUEST_METHOD'],['GET','HEAD'])) {
 			return false;
 		}
 		if (http_response_code() != 200) {
@@ -899,7 +899,7 @@ class cloudflare_extension extends \EarthAsylumConsulting\abstract_extension
 				'xml'		=> 'text/xml',
 				'rss'		=> 'application/rss+xml',
 			]);
-			$type = wp_check_filetype(wp_unslash(getenv('REQUEST_URI')),$mime_types);
+			$type = wp_check_filetype(wp_unslash($_SERVER['REQUEST_URI']),$mime_types);
 			$cacheTags[] = ($type['type']) ? $type['type'] : get_option( 'html_type' );
 		} else {
 			$cacheTags[] = get_option( 'html_type' );
