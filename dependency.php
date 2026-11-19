@@ -11,7 +11,7 @@ namespace EarthAsylumConsulting;
  * @copyright	Copyright (c) 2026 EarthAsylum Consulting <www.earthasylum.com>
  * @license		https://www.gnu.org/licenses/gpl.html GNU General Public License, Version 3
  * @link		https://github.com/EarthAsylum/docs.eacDoojigger/tree/main/Doodads
- * @version		26.1117.1
+ * @version		26.1119.1
  */
 
 if (! defined( 'ABSPATH' )) exit;
@@ -94,7 +94,7 @@ if ( ! class_exists('\EarthAsylumConsulting\dependency') )
 			$dependency['download']	= (isset( $dependency['download'] ))
 				? esc_url_raw($dependency['download']) : false;
 			$dependency['after']	= (isset( $dependency['after'] ))
-				? esc_url_raw($dependency['after']) : esc_url_raw(getenv('REQUEST_URI'));
+				? esc_url_raw($dependency['after']) : esc_url_raw($_SERVER['REQUEST_URI'] ?? '');
 
 			self::$notices_hook 	= (is_network_admin()) ? 'network_admin_notices' : 'admin_notices';
 			$slug 					= dirname( current($dependency['requires']) );
@@ -351,7 +351,7 @@ if ( ! class_exists('\EarthAsylumConsulting\dependency') )
 			if ($action == 'dependency_install_activate') {
 				wp_safe_redirect( remove_query_arg(['action','plugin','_wpnonce'],self::$dependency['after']) );
 			} else {
-				wp_safe_redirect( remove_query_arg(['action','plugin','_wpnonce'],getenv('REQUEST_URI')) );
+				wp_safe_redirect( remove_query_arg(['action','plugin','_wpnonce'],esc_url_raw($_SERVER['REQUEST_URI'] ?? '')) );
 			}
 
 			// We can't capture the output (install flushes the buffers) but we can wrap it (if not redirecting)
